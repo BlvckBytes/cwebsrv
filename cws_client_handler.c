@@ -19,7 +19,20 @@ static void cws_serve_client(void *arg)
   while ((read_size = recv(client->descriptor, message, sizeof(message), 0)) > 0)
   {
     cws_print_prefix(client);
-    printf("(INCOMING) %s\n", message);
+    printf("Incoming request:\n");
+
+    const char *error_msg;
+    cws_request_t *req = cws_request_parse(message, &error_msg);
+    cws_request_print(req);
+
+    // Print error message, if exists
+    if (error_msg)
+    {
+      cws_print_prefix(client);
+      printf("Error: %s\n", error_msg);
+    }
+
+    cws_request_free(req);
 
     // Reset buffer
     memset(message, 0, sizeof(message));

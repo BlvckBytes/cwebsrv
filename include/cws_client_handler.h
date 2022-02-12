@@ -9,6 +9,7 @@
 
 #include "cws_client.h"
 #include "cws_util.h"
+#include "cws_request.h"
 
 /**
  * @brief Start handling an individual client in it's own thread
