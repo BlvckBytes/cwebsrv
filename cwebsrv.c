@@ -22,10 +22,15 @@ int main(void)
     return 1;
   }
 
+  // Listen on any internet address on 8192
   struct sockaddr_in server_addr;
   server_addr.sin_addr.s_addr = INADDR_ANY;
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(8192);
+
+  // Socket should be reusable
+  bool reuse_addr = true;
+  setsockopt(srv_desc, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
 
   int bind_ret = bind(srv_desc, (struct sockaddr *) &server_addr, sizeof(server_addr));
   if (bind_ret < 0)

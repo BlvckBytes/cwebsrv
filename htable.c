@@ -1,12 +1,13 @@
 #include "htable.h"
 
-htable_t *htable_alloc(size_t table_size)
+htable_t *htable_alloc(size_t table_size, size_t table_max_size)
 {
   // Allocate the table itself
   htable_t *table = (htable_t *) malloc(sizeof(htable_t));
 
   // Set internal properties
   table->_table_size = table_size;
+  table->_table_cap = table_max_size;
 
   // Allocate all slots and initialize them to NULL keys
   table->table = malloc(sizeof(htable_entry_t) * table_size);
@@ -51,17 +52,30 @@ void htable_write_slot(htable_t *table, size_t slot, char *key, void *elem)
   if (entry->key)
     free(entry->key);
 
-  // Allocate space for the string
-  entry->key = (char *) malloc(strlen(key) + 1);
-
-  // Copy over and terminate
-  const char *c = key;
-  for (; *c; c++)
-    entry->key[c - key] = *c;
-  entry->key[c - key] = 0;
+  // Copy over key
+  entry->key = strdup(key);
 
   // Set the value
   entry->value = elem;
+}
+
+/**
+ * @brief Internal routine for resizing the hash table
+ * 
+ * @param table Table to resize
+ * @param new_size New size of the table
+ */
+static void htable_resize(htable_t *table, size_t new_size)
+{
+  // Resize memory block of the table
+  table->table = realloc(table->table, sizeof(htable_entry_t) * new_size);
+  
+  // Initialize new slots
+  for (size_t i = table->_table_size; i < new_size; i++)
+    table->table[i] = (htable_entry_t) { NULL, NULL };
+  
+  // Keep track of the new size
+  table->_table_size = new_size;
 }
 
 htable_result_t htable_insert(htable_t *table, char *key, void *elem)
@@ -91,6 +105,20 @@ htable_result_t htable_insert(htable_t *table, char *key, void *elem)
       return htable_SUCCESS;
     }
 
+    size_t rem_cap = table->_table_cap - table->_table_size;
+    if (rem_cap > 0)
+    {
+      // Try to double the amount of slots, go straight to the cap otherwise
+      size_t new_size = table->_table_size * 2;
+      if (new_size > rem_cap)
+        new_size = table->_table_size + rem_cap;
+
+      htable_resize(table, new_size);
+
+      // Retry insertion
+      return htable_insert(table, key, elem);
+    }
+
     // Could not find another empty slot
     return htable_FULL;
   }
@@ -108,12 +136,11 @@ htable_entry_t *find_entry(htable_t *table, char *key)
   {
     htable_entry_t *entry = &table->table[(i + slot) % table->_table_size];
 
-    // Free slot reached, entry does not exist
-    if (entry->key == NULL) return NULL;
+    // Slot holds nothing
+    if (entry->key == NULL) continue;
 
     // Not in current slot!
     if (strcmp(entry->key, key) != 0) continue;
-
     return entry;
   }
 

@@ -19,7 +19,11 @@ static void cws_serve_client(void *arg)
   while ((read_size = recv(client->descriptor, message, sizeof(message), 0)) > 0)
   {
     cws_print_prefix(client);
-    printf("Incoming request:\n");
+    printf("RAW request:\n");
+    printf("%s", message);
+
+    cws_print_prefix(client);
+    printf("Parsed request:\n");
 
     const char *error_msg;
     cws_request_t *req = cws_request_parse(message, &error_msg);

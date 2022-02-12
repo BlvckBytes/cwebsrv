@@ -26,10 +26,10 @@ void cws_print_addr_in(struct sockaddr_in addr);
  * 
  * @param str Input string
  * @param offs Offset reference, gets modified in place (for chaining)
- * @param sep Separator character
+ * @param sep Separator string
  * @param skip Skip mode - if true, NULL is returned (for efficiency)
  * @return char* Allocated substring
  */
-char *cws_strdup_until(char *str, size_t *offs, char sep, bool skip);
+char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip);
 
 #endif

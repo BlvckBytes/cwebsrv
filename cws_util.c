@@ -49,7 +49,14 @@ void cws_print_htable_keys(htable_t *table, bool val_is_arr)
   free(header_keys);
 }
 
-char *cws_strdup_until(char *str, size_t *offs, char sep, bool skip)
+static bool cws_is_at_index(char *str, const char *search, size_t offs)
+{
+  for (size_t i = 0; i < strlen(search); i++)
+    if (str[i + offs] != search[i]) return false;
+  return true;
+}
+
+char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip)
 {
   // No input provided
   if (!str) return NULL;
@@ -61,21 +68,24 @@ char *cws_strdup_until(char *str, size_t *offs, char sep, bool skip)
     if (i == str_len - 1) i++;
 
     // Wait until the separator has been encountered
-    // Newline can substitute for the separator
-    else if (!(str[i] == sep || str[i] == '\n' || str[i] == '\r')) continue;
+    else if (!cws_is_at_index(str, sep, i)) continue;
 
     // Create substring if not in skip mode
     char *res = NULL;
     if (!skip)
     {
-      // Copy target range into buffer and terminate
-      res = (char *) malloc(i - *offs + 1);
-      strncpy(res, &str[*offs], i - *offs);
-      res[i - *offs] = 0;
+      size_t res_len = i - *offs + 1;
+
+      // Eat up carriage return that preceds the targetted newline
+      if (str[i - 1] == '\r' && sep[strlen(sep) - 1] == '\n')
+        res_len--;
+
+      // Copy target range
+      res = strndup(&str[*offs], res_len - 1);
     }
 
     // Skip separator for next call
-    *offs = i + 1;
+    *offs = i + strlen(sep);
     return res;
   }
 

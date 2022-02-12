@@ -38,17 +38,24 @@ typedef struct
  */
 typedef struct
 {
+  // Actual table, list of entries
   htable_entry_t *table;
+
+  // Current allocated size of the table
   size_t _table_size;
+
+  // Maximum size the table can grow to
+  size_t _table_cap;
 } htable_t;
 
 /**
  * @brief Allocate a new, empty table
  * 
  * @param table_size Size of the table
+ * @param table_size Maximum size of the table, set to table_size for no automatic growth
  * @return htable_t* Pointer to the new table
  */
-htable_t *htable_alloc(size_t table_size);
+htable_t *htable_alloc(size_t table_size, size_t table_max_size);
 
 /**
  * @brief Free a previously allocated table
