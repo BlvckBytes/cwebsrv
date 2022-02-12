@@ -10,7 +10,6 @@
 
 int main(void)
 {
-
   int srv_desc = socket(
     AF_INET, // DOMAIN
     SOCK_STREAM, // TYPE
