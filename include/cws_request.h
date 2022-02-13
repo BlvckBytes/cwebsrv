@@ -6,6 +6,7 @@
 #include "cws_util.h"
 #include "htable.h"
 #include "str2int.h"
+#include "mman.h"
 
 /**
  * @brief Represents a HTTP request by a client

@@ -1,6 +1,6 @@
 #include "cws_request.h"
 
-// TODO: Create a system like subsink to sink all the allocated resources on return NULL
+// TODO: Improve MMAN by getting rid of all the strdup's
 
 cws_request_t *cws_request_parse(char *request, const char **error_msg)
 {
@@ -8,7 +8,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   size_t str_offs = 0;
 
   // Cut method string
-  char *method_str = cws_strdup_until(request, &str_offs, " ", false);
+  mman char *method_str = cws_strdup_until(request, &str_offs, " ", false);
 
   if (!method_str)
   {
@@ -28,7 +28,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   }
 
   // Cut raw uri
-  char *raw_uri = cws_strdup_until(request, &str_offs, " ", false);
+  mman char *raw_uri = cws_strdup_until(request, &str_offs, " ", false);
 
   if (!raw_uri)
   {
@@ -43,10 +43,10 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
 
   // Cut raw HTTP version, skip "HTTP/" and cut major & minor
   size_t vers_offs = 0;
-  char *raw_vers = cws_strdup_until(request, &str_offs, "\n", false);
+  mman char *raw_vers = cws_strdup_until(request, &str_offs, "\n", false);
   cws_strdup_until(raw_vers, &vers_offs, "/", true);
-  char *vers_major_str = cws_strdup_until(raw_vers, &vers_offs, ".", false);
-  char *vers_minor_str = cws_strdup_until(raw_vers, &vers_offs, "\n", false);
+  mman char *vers_major_str = cws_strdup_until(raw_vers, &vers_offs, ".", false);
+  mman char *vers_minor_str = cws_strdup_until(raw_vers, &vers_offs, "\n", false);
 
   if (!raw_vers || !vers_major_str || !vers_minor_str)
   {
@@ -78,8 +78,8 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   {
     // Split into key and value, based on first occurrence of :
     size_t curr_header_offs = 0;
-    char *header_key = cws_strdup_until(curr_header, &curr_header_offs, ": ", false);
-    char *header_value = cws_strdup_until(curr_header, &curr_header_offs, "\n", false);
+    mman char *header_key = cws_strdup_until(curr_header, &curr_header_offs, ": ", false);
+    mman char *header_value = cws_strdup_until(curr_header, &curr_header_offs, "\n", false);
 
     if (!header_key || !header_value)
     {
@@ -88,7 +88,8 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
       return NULL;
     }
 
-    htable_result_t ins_res = htable_insert(headers, header_key, header_value);
+    // Insert with duplicated value, since the strdup result will be destroyed after this iteration
+    htable_result_t ins_res = htable_insert(headers, header_key, strdup(header_value));
 
     if (ins_res == htable_KEY_ALREADY_EXISTS)
     {
@@ -103,8 +104,6 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
         *error_msg = "Too many headers in the request!";
       return NULL;
     }
-
-    free(header_key);
   }
 
   cws_request_t *req = (cws_request_t *) malloc(sizeof(cws_request_t));

@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "mman.h"
 #include "htable.h"
 
 /**

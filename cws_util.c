@@ -61,7 +61,7 @@ char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip)
   // No input provided
   if (!str) return NULL;
 
-  size_t str_len = strlen(str);
+  size_t str_len = strlen(str), prev_offs = *offs;
   for (size_t i = *offs; i < str_len; i++)
   {
     // Last character, navigate onto NULL
@@ -70,23 +70,27 @@ char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip)
     // Wait until the separator has been encountered
     else if (!cws_is_at_index(str, sep, i)) continue;
 
-    // Create substring if not in skip mode
-    char *res = NULL;
-    if (!skip)
-    {
-      size_t res_len = i - *offs + 1;
-
-      // Eat up carriage return that preceds the targetted newline
-      if (str[i - 1] == '\r' && sep[strlen(sep) - 1] == '\n')
-        res_len--;
-
-      // Copy target range
-      res = strndup(&str[*offs], res_len - 1);
-    }
-
     // Skip separator for next call
     *offs = i + strlen(sep);
-    return res;
+
+    // Don't create the substring
+    if (skip) return NULL;
+
+    size_t res_len = i - prev_offs;
+
+    // Eat up carriage return that preceds the targetted newline
+    if (str[i - 1] == '\r' && sep[strlen(sep) - 1] == '\n')
+      res_len--;
+
+    // Allocate a copy
+    mman char *res = mman_alloc(res_len + 1, NULL);
+
+    // Copy over string content and terminate
+    for (size_t j = 0; j < res_len; j++)
+      res[j] = str[j + prev_offs];
+    res[res_len] = 0;
+
+    return mman_ref(res);
   }
 
   return NULL;

@@ -3,7 +3,7 @@
 bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_message)
 {
   cws_uri_t *res = (cws_uri_t *) malloc(sizeof(cws_uri_t));
-  res->raw_uri = raw_uri;
+  res->raw_uri = strdup(raw_uri);
   res->path = NULL;
   res->query = NULL;
   *output = res;
