@@ -26,7 +26,7 @@ static void cws_serve_client(void *arg)
     printf("Parsed request:\n");
 
     const char *error_msg;
-    cws_request_t *req = cws_request_parse(message, &error_msg);
+    mman cws_request_t *req = cws_request_parse(message, &error_msg);
     cws_request_print(req);
 
     // Print error message, if exists
@@ -35,8 +35,6 @@ static void cws_serve_client(void *arg)
       cws_print_prefix(client);
       printf("Error: %s\n", error_msg);
     }
-
-    cws_request_free(req);
 
     // Reset buffer
     memset(message, 0, sizeof(message));

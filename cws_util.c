@@ -17,7 +17,7 @@ void cws_print_addr_in(struct sockaddr_in addr)
 void cws_print_htable_keys(htable_t *table, bool val_is_arr)
 {
   // Fetch populated key slots from table
-  char **header_keys = NULL;
+  mman char **header_keys = NULL;
   htable_list_keys(table, &header_keys);
 
   // No entries
@@ -42,11 +42,7 @@ void cws_print_htable_keys(htable_t *table, bool val_is_arr)
     // Value is scalar, print at once
     else
       printf("\"%s\" -> \"%s\"\n", *header_key, (char *) header_value);
-
   }
-
-  // Free key buffer
-  free(header_keys);
 }
 
 static bool cws_is_at_index(char *str, const char *search, size_t offs)

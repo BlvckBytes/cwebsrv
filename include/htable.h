@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "mman.h"
+
 #define htable_FNV_OFFSET 14695981039346656037UL
 #define htable_FNV_PRIME 1099511628211UL
 
@@ -60,9 +62,9 @@ htable_t *htable_alloc(size_t table_size, size_t table_max_size);
 /**
  * @brief Free a previously allocated table
  * 
- * @param table Table reference
+ * @param ref Table reference
  */
-void htable_free(htable_t *table);
+void htable_free(void *ref);
 
 /**
  * @brief Insert a new item into the table

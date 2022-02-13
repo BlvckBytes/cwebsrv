@@ -75,43 +75,30 @@ INLINED static mman_meta_t *mman_create(size_t size, mman_cleanup_f_t cf)
   return meta;
 }
 
-/**
- * @brief Allocate memory and get a wrapped reference to it
- * 
- * @param size Number of bytes to allocate
- * @param cf Cleanup function, NULL if none is required
- * @return void* Pointer to the resource, NULL if no space left
- */
 void *mman_alloc(size_t size, mman_cleanup_f_t cf)
 {
   // Create new meta-info and return a pointer to the data block
   return mman_create(size, cf)->ptr;
 }
 
-/**
- * @brief Extend previously allocated memory with memory management.
- * This destroys the original resource and creates a copy which will
- * then be wrapped
- * 
- * @param size Number of bytes of the original object
- * @param ptr Pointer to the original object
- * @param cf Cleanup function, NULL if none is required
- * @return void* Pointer to the resource, NULL if no space left
- */
-void *mman_from(size_t size, void *ptr, mman_cleanup_f_t cf)
+void *mman_realloc(void *ptr_ptr, size_t new_size)
 {
-  // Create meta-info and data block to copy over to
-  mman_meta_t *meta = mman_create(size, cf);
+  // Receiving a pointer to the pointer to the reference, deref once
+  void *ptr = *((void **) ptr_ptr);
 
-  // Copy over data block
-  memcpy(meta->ptr, ptr, size);
+  // Fetch the meta info allocated before the data block
+  mman_meta_t *meta = ptr - sizeof(mman_meta_t);
+  if (ptr != meta->ptr)
+  {
+    fprintf(stderr, "Invalid resource passed to \"mman_realloc\"!\n");
+    return NULL;
+  }
 
-  // Free the old duplicate, also call cleanup on it
-  if (cf) cf(ptr);
-  free(ptr);
-  ptr = NULL;
+  // Reallocate whole meta object
+  meta = realloc(meta, new_size);
 
-  // Return a pointer to the data block
+  // Update pointer and return updated pointer
+  meta->ptr = meta + 1;
   return meta->ptr;
 }
 
@@ -121,11 +108,6 @@ void *mman_from(size_t size, void *ptr, mman_cleanup_f_t cf)
 ============================================================================
 */
 
-/**
- * @brief Deallocate a wrapped resource when it goes out of scope
- * 
- * @param ptr_ptr Pointer to the pointer to the resource
- */
 void mman_dealloc(void *ptr_ptr)
 {
   // Receiving a pointer to the pointer to the reference, deref once
@@ -138,7 +120,7 @@ void mman_dealloc(void *ptr_ptr)
   mman_meta_t *meta = ptr - sizeof(mman_meta_t);
   if (ptr != meta->ptr)
   {
-    fprintf(stderr, "Invalid resource passed to \"cmm_dealloc\"!\n");
+    fprintf(stderr, "Invalid resource passed to \"mman_dealloc\"!\n");
     return;
   }
 
@@ -150,9 +132,6 @@ void mman_dealloc(void *ptr_ptr)
   if (meta->cf) meta->cf(ptr);
   free(meta);
   ptr = NULL;
-
-  // WARNING: This is a dev-debug
-  printf("Freed a mman resource!\n");
 }
 
 /*
@@ -161,12 +140,6 @@ void mman_dealloc(void *ptr_ptr)
 ============================================================================
 */
 
-/**
- * @brief Create a new reference to be shared with other consumers
- * 
- * @param ptr Pointer to the managed resource
- * @return void* Pointer to be shared
- */
 void *mman_ref(void *ptr)
 {
   // Fetch the meta info allocated before the data block

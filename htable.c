@@ -3,30 +3,32 @@
 htable_t *htable_alloc(size_t table_size, size_t table_max_size)
 {
   // Allocate the table itself
-  htable_t *table = (htable_t *) malloc(sizeof(htable_t));
+  htable_t *table = (htable_t *) mman_alloc(sizeof(htable_t), htable_free);
 
   // Set internal properties
   table->_table_size = table_size;
   table->_table_cap = table_max_size;
 
   // Allocate all slots and initialize them to NULL keys
-  table->table = malloc(sizeof(htable_entry_t) * table_size);
+  table->table = (htable_entry_t *) mman_alloc(sizeof(htable_entry_t) * table_size, free);
   for (size_t i = 0; i < table_size; i++)
     table->table[i] = (htable_entry_t) { NULL, NULL };
 
-  return table;
+  return mman_ref(table);
 }
 
-void htable_free(htable_t *table)
+void htable_free(void *ref)
 {
+  htable_t *table = (htable_t *) ref;
+
   // Free all table string keys
   for (size_t i = 0; i < table->_table_size; i++)
     free(table->table[i].key);
 
   // Free the actual table as well as it's container
-  free(table->table);
+  mman_dealloc(table->table);
   table->table = NULL;
-  free(table);
+  mman_dealloc(table);
 }
 
 size_t htable_hash(char *key, size_t table_size)
@@ -68,7 +70,8 @@ void htable_write_slot(htable_t *table, size_t slot, char *key, void *elem)
 static void htable_resize(htable_t *table, size_t new_size)
 {
   // Resize memory block of the table
-  table->table = realloc(table->table, sizeof(htable_entry_t) * new_size);
+  mman void *new_table = mman_realloc(&table->table, sizeof(htable_entry_t) * new_size);
+  table->table = mman_ref(new_table);
   
   // Initialize new slots
   for (size_t i = table->_table_size; i < new_size; i++)
@@ -202,7 +205,7 @@ void htable_list_keys(htable_t *table, char ***output)
   for (size_t i = 0; i < table->_table_size; ++i)
     if (table->table[i].key) num_keys++;
 
-  *output = (char **) malloc((num_keys + 1) * sizeof(char *));
+  *output = (char **) mman_alloc((num_keys + 1) * sizeof(char *), NULL);
 
   size_t output_index = 0;
   for (size_t i = 0; i < table->_table_size; ++i)

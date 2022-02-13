@@ -60,16 +60,13 @@ typedef struct
 void *mman_alloc(size_t size, mman_cleanup_f_t cf);
 
 /**
- * @brief Extend previously allocated memory with memory management.
- * This destroys the original resource and creates a copy which will
- * then be wrapped
+ * @brief Reallocate a mman managed datablock
  * 
- * @param size Number of bytes of the original object
- * @param ptr Pointer to the original object
- * @param cf Cleanup function, NULL if none is required
- * @return void* Pointer to the resource, NULL if no space left
+ * @param ptr_ptr Pointer to the pointer to the resource
+ * @param new_size New size of the data block
+ * @return void* Pointer to the data block
  */
-void *mman_from(size_t size, void *ptr, mman_cleanup_f_t cf);
+void *mman_realloc(void *ptr_ptr, size_t new_size);
 
 /*
 ============================================================================

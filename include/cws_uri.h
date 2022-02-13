@@ -2,6 +2,7 @@
 #define cws_uri_h
 
 #include "htable.h"
+#include "mman.h"
 
 typedef struct
 {
@@ -18,6 +19,6 @@ typedef struct
 
 bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_message);
 
-void cws_uri_free(cws_uri_t *uri);
+void cws_uri_free(void *ref);
 
 #endif
