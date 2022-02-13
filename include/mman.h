@@ -13,7 +13,7 @@
 */
 
 // Marks a memory managed variable
-#define mman __attribute__((cleanup(mman_dealloc)))
+#define scptr __attribute__((cleanup(mman_dealloc)))
 
 // Marks an always inlined function
 #define INLINED __attribute__((always_inline)) inline

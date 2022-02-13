@@ -17,7 +17,7 @@ void cws_print_addr_in(struct sockaddr_in addr)
 void cws_print_htable_keys(htable_t *table, bool val_is_arr)
 {
   // Fetch populated key slots from table
-  mman char **header_keys = NULL;
+  scptr char **header_keys = NULL;
   htable_list_keys(table, &header_keys);
 
   // No entries
@@ -85,7 +85,7 @@ char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip)
       res_len--;
 
     // Allocate a copy
-    mman char *res = mman_alloc(res_len + 1, NULL);
+    scptr char *res = mman_alloc(res_len + 1, NULL);
 
     // Copy over string content and terminate
     for (size_t j = 0; j < res_len; j++)

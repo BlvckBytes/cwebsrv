@@ -17,7 +17,7 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg)
   )
   {
     size_t curr_param_offs = 0;
-    mman char *param_key = cws_strdup_until(curr_param, &curr_param_offs, "=", false);
+    scptr char *param_key = cws_strdup_until(curr_param, &curr_param_offs, "=", false);
     char *param_value = cws_strdup_until(curr_param, &curr_param_offs, "\0", false);
     if (rp_exit(!param_key || !param_value, error_msg, "Malformed query parameter in request!")) return NULL;
 

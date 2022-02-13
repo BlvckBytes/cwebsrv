@@ -2,7 +2,7 @@
 
 dynarr_t *dynarr_alloc(size_t array_size, size_t array_max_size, mman_cleanup_f_t cf)
 {
-  mman dynarr_t *res = mman_alloc(sizeof(dynarr_t), dynarr_free);
+  scptr dynarr_t *res = mman_alloc(sizeof(dynarr_t), dynarr_free);
 
   res->_array_size = array_size;
   res->_array_cap = array_max_size;
@@ -36,7 +36,7 @@ void dynarr_free(void *ref)
 static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
 {
   // Resize memory block of the array
-  mman void *new_arr = mman_realloc(&arr->items, sizeof(void *) * new_size);
+  scptr void *new_arr = mman_realloc(&arr->items, sizeof(void *) * new_size);
   arr->items = mman_ref(new_arr);
   
   // Initialize new slots

@@ -75,7 +75,7 @@ void htable_write_slot(htable_t *table, size_t slot, char *key, void *elem)
 static void htable_resize(htable_t *table, size_t new_size)
 {
   // Resize memory block of the table
-  mman void *new_table = mman_realloc(&table->table, sizeof(htable_entry_t) * new_size);
+  scptr void *new_table = mman_realloc(&table->table, sizeof(htable_entry_t) * new_size);
   table->table = mman_ref(new_table);
   
   // Initialize new slots
