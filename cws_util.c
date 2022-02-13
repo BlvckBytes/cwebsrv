@@ -47,8 +47,14 @@ void cws_print_htable_keys(htable_t *table, bool val_is_arr)
 
 static bool cws_is_at_index(char *str, const char *search, size_t offs)
 {
-  for (size_t i = 0; i < strlen(search); i++)
-    if (str[i + offs] != search[i]) return false;
+  // When searching for the string end, wait until end is reached
+  if (search[0] == 0) return str[offs] == 0;
+
+  // Search for full sequence at current offset
+  for (const char *c = search; *c; c++)
+    if (str[(c - search) + offs] != *c) return false;
+
+  // Found
   return true;
 }
 
@@ -90,4 +96,11 @@ char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip)
   }
 
   return NULL;
+}
+
+bool rp_exit(bool exit, const char **error_msg, const char *error)
+{
+  if (!exit) return false;
+  if (error_msg) *error_msg = error;
+  return true;
 }

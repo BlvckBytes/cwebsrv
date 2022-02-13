@@ -75,6 +75,13 @@ void *mman_realloc(void *ptr_ptr, size_t new_size);
 */
 
 /**
+ * @brief Deallocate a pointer directly
+ * 
+ * @param ptr Pointer to the resource
+ */
+void mman_dealloc_direct(void *ptr);
+
+/**
  * @brief Deallocate a wrapped resource when it goes out of scope
  * 
  * @param ptr_ptr Pointer to the pointer to the resource

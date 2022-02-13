@@ -1,21 +1,6 @@
 #include "cws_request.h"
 
 /**
- * @brief Request parser exit routine, returns true if NULL should be
- * returned by the parser
- * 
- * @param exit Exiting condition
- * @param error_msg Error message output reference
- * @param error Error on exiting
- */
-static bool rp_exit(bool exit, const char **error_msg, const char *error)
-{
-  if (!exit) return false;
-  if (error_msg) *error_msg = error;
-  return true;
-}
-
-/**
  * @brief Request parser header parsing subroutine
  * 
  * @param request Request string
@@ -26,7 +11,7 @@ static bool rp_exit(bool exit, const char **error_msg, const char *error)
 static htable_t *parse_headers(char *request, size_t *str_offs, const char **error_msg)
 {
   // Create headers hash table
-  mman htable_t *headers = htable_alloc(CWS_DEF_NUM_HEADERS, CWS_MAX_NUM_HEADERS);
+  mman htable_t *headers = htable_alloc(CWS_DEF_NUM_HEADERS, CWS_MAX_NUM_HEADERS, free);
 
   // Parse all available headers
   char *curr_header;
@@ -35,7 +20,7 @@ static htable_t *parse_headers(char *request, size_t *str_offs, const char **err
     (curr_header = cws_strdup_until(request, str_offs, "\n", false)) &&
 
     // Stop when encountering an empty line
-    !(strcmp(curr_header, "\n") == 0 || strcmp(curr_header, "\r\n") == 0)
+    !(curr_header[0] == 0 || strcmp(curr_header, "\n") == 0 || strcmp(curr_header, "\r\n") == 0)
   )
   {
     // Split into key and value, based on first occurrence of :
@@ -44,7 +29,6 @@ static htable_t *parse_headers(char *request, size_t *str_offs, const char **err
     mman char *header_value = cws_strdup_until(curr_header, &curr_header_offs, "\n", false);
     if (rp_exit(!header_key || !header_value, error_msg, "Malformed header in request!")) return NULL;
 
-    // Insert with duplicated value, since the strdup result will be destroyed after this iteration
     htable_result_t ins_res = htable_insert(headers, header_key, strdup(header_value));
     if (rp_exit(ins_res == htable_KEY_ALREADY_EXISTS, error_msg, "Duplicate header in request!")) return NULL;
     if (rp_exit(ins_res == htable_FULL, error_msg, "Too many headers in request!")) return NULL;
@@ -101,11 +85,10 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
 
   // Parse the headers
   htable_t *headers = parse_headers(request, &str_offs, error_msg);
-  if (rp_exit(!headers, error_msg, "Could not parse headers!")) return NULL;
+  if (!headers) return NULL;
 
   // Just get the rest of the body
   char *body = cws_strdup_until(request, &str_offs, "\0", false);
-  if (rp_exit(!headers, error_msg, "Could not parse body!")) return NULL;
 
   // Allocate request and set it's members
   mman cws_request_t *req = (cws_request_t *) mman_alloc(sizeof(cws_request_t), cws_request_free);
@@ -150,8 +133,28 @@ void cws_request_print(cws_request_t *request)
     printf("URI Path: %s\n", request->uri->path);
     printf("URI Parameters:\n");
 
-    if (request->uri->query)
-      cws_print_htable_keys(request->uri->query, true);
+    htable_t *query = request->uri->query;
+    if (query)
+    {
+      char **keys;
+      htable_list_keys(query, &keys);
+
+      for (char **key = keys; *key; key++)
+      {
+        printf("%s:\n", *key);
+
+        dynarr_t *values;
+        if (htable_fetch(query, *key, (void **) &values) != htable_SUCCESS)
+        {
+          printf("error!\n");
+          continue;
+        }
+
+        for (size_t i = 0; i < values->_array_size; i++)
+          if (values->items[i]) printf("\"%s\", ", (char *) values->items[i]);
+        printf("\n");
+      }
+    }
     else
       printf("URI parameters not parsed!\n");
   }
@@ -165,7 +168,7 @@ void cws_request_print(cws_request_t *request)
     printf("Headers not parsed!\n");
 
   printf("Body:\n");
-  printf("%s\n", request->body ? request->body : "Body not parsed!");
+  printf("%s\n", request->body ? request->body : "<no body>");
 
   printf("------------< HTTP Request >------------\n");
 }

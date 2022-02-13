@@ -20,7 +20,7 @@ static void cws_serve_client(void *arg)
   {
     cws_print_prefix(client);
     printf("RAW request:\n");
-    printf("%s", message);
+    printf("%s\n", message);
 
     cws_print_prefix(client);
     printf("Parsed request:\n");
@@ -50,7 +50,7 @@ static void cws_serve_client(void *arg)
   cws_print_prefix(client);
   close(client->descriptor);
   cws_free_client(client);
-  printf("Resources freed!\n");
+  printf("Resources free'd!\n");
 }
 
 void cws_handle_client(cws_client_t *client)

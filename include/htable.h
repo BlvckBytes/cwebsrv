@@ -48,16 +48,20 @@ typedef struct
 
   // Maximum size the table can grow to
   size_t _table_cap;
+
+  // Cleanup function for the table items
+  mman_cleanup_f_t _cf;
 } htable_t;
 
 /**
  * @brief Allocate a new, empty table
  * 
  * @param table_size Size of the table
- * @param table_size Maximum size of the table, set to table_size for no automatic growth
+ * @param table_max_size Maximum size of the table, set to table_size for no automatic growth
+ * @param cf Cleanup function for the items
  * @return htable_t* Pointer to the new table
  */
-htable_t *htable_alloc(size_t table_size, size_t table_max_size);
+htable_t *htable_alloc(size_t table_size, size_t table_max_size, mman_cleanup_f_t cf);
 
 /**
  * @brief Free a previously allocated table

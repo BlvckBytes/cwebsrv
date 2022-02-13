@@ -1,13 +1,12 @@
 #include "htable.h"
 
-htable_t *htable_alloc(size_t table_size, size_t table_max_size)
+htable_t *htable_alloc(size_t table_size, size_t table_max_size, mman_cleanup_f_t cf)
 {
-  // Allocate the table itself
   htable_t *table = (htable_t *) mman_alloc(sizeof(htable_t), htable_free);
 
-  // Set internal properties
   table->_table_size = table_size;
   table->_table_cap = table_max_size;
+  table->_cf = cf;
 
   // Allocate all slots and initialize them to NULL keys
   table->table = (htable_entry_t *) mman_alloc(sizeof(htable_entry_t) * table_size, free);
@@ -21,9 +20,15 @@ void htable_free(void *ref)
 {
   htable_t *table = (htable_t *) ref;
 
-  // Free all table string keys
+  // Free all table entries
   for (size_t i = 0; i < table->_table_size; i++)
+  {
+    // Call the item free function on all items
+    if (table->_cf) table->_cf(table->table[i].value);
+
+    // Free the duped string
     free(table->table[i].key);
+  }
 
   // Free the actual table as well as it's container
   mman_dealloc(table->table);
@@ -108,6 +113,7 @@ htable_result_t htable_insert(htable_t *table, char *key, void *elem)
       return htable_SUCCESS;
     }
 
+    // TODO: Size down as well (on removal)
     size_t rem_cap = table->_table_cap - table->_table_size;
     if (rem_cap > 0)
     {

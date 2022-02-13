@@ -33,4 +33,14 @@ void cws_print_addr_in(struct sockaddr_in addr);
  */
 char *cws_strdup_until(char *str, size_t *offs, const char* sep, bool skip);
 
+/**
+ * @brief Request parser exit routine, returns true if NULL should be
+ * returned by the parser
+ * 
+ * @param exit Exiting condition
+ * @param error_msg Error message output reference
+ * @param error Error on exiting
+ */
+bool rp_exit(bool exit, const char **error_msg, const char *error);
+
 #endif

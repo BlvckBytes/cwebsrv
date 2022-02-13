@@ -108,6 +108,11 @@ void *mman_realloc(void *ptr_ptr, size_t new_size)
 ============================================================================
 */
 
+void mman_dealloc_direct(void *ptr)
+{
+  mman_dealloc(&ptr);
+}
+
 void mman_dealloc(void *ptr_ptr)
 {
   // Receiving a pointer to the pointer to the reference, deref once
