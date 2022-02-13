@@ -141,7 +141,7 @@ void cws_request_print(cws_request_t *request)
 
       for (char **key = keys; *key; key++)
       {
-        printf("%s:\n", *key);
+        printf("\"%s\":\n", *key);
 
         dynarr_t *values;
         if (htable_fetch(query, *key, (void **) &values) != htable_SUCCESS)
@@ -151,8 +151,7 @@ void cws_request_print(cws_request_t *request)
         }
 
         for (size_t i = 0; i < values->_array_size; i++)
-          if (values->items[i]) printf("\"%s\", ", (char *) values->items[i]);
-        printf("\n");
+          if (values->items[i]) printf("-\"%s\"\n", (char *) values->items[i]);
       }
     }
     else
