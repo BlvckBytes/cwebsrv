@@ -5,8 +5,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "cws_client.h"
-#include "cws_client_handler.h"
+#include "cws/cws_client.h"
+#include "cws/cws_client_handler.h"
 
 int main(void)
 {

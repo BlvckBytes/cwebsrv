@@ -7,9 +7,9 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include "cws_client.h"
-#include "cws_util.h"
-#include "cws_request.h"
+#include "cws/cws_client.h"
+#include "cws/cws_util.h"
+#include "cws/cws_request.h"
 #include "util/mman.h"
 
 /**

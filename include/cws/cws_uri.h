@@ -1,7 +1,7 @@
 #ifndef cws_uri_h
 #define cws_uri_h
 
-#include "cws_util.h"
+#include "cws/cws_util.h"
 #include "datastruct/htable.h"
 #include "util/mman.h"
 #include "datastruct/dynarr.h"

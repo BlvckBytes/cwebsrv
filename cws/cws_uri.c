@@ -1,4 +1,4 @@
-#include "cws_uri.h"
+#include "cws/cws_uri.h"
 
 bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg)
 {
