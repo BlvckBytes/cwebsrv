@@ -7,6 +7,7 @@
 
 #include "cws/cws_client.h"
 #include "cws/cws_client_handler.h"
+#include "util/mman.h"
 
 int main(void)
 {
@@ -52,7 +53,7 @@ int main(void)
 
   while (1)
   {
-    cws_client_t *client = cws_alloc_client();
+    scptr cws_client_t *client = cws_alloc_client();
     client->descriptor = accept(srv_desc, (struct sockaddr *) client->address, client->address_size);
 
     if (client->descriptor < 0)

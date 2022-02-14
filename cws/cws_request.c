@@ -17,7 +17,7 @@ static htable_t *parse_headers(char *request, size_t *str_offs, const char **err
   char *curr_header;
   while (
     // Parse next header line
-    (curr_header = cws_strdup_until(request, str_offs, "\n", false)) &&
+    (curr_header = partial_strdup(request, str_offs, "\n", false)) &&
 
     // Stop when encountering an empty line
     !(curr_header[0] == 0 || strcmp(curr_header, "\n") == 0 || strcmp(curr_header, "\r\n") == 0)
@@ -25,8 +25,8 @@ static htable_t *parse_headers(char *request, size_t *str_offs, const char **err
   {
     // Split into key and value, based on first occurrence of :
     size_t curr_header_offs = 0;
-    scptr char *header_key = cws_strdup_until(curr_header, &curr_header_offs, ": ", false);
-    scptr char *header_value = cws_strdup_until(curr_header, &curr_header_offs, "\n", false);
+    scptr char *header_key = partial_strdup(curr_header, &curr_header_offs, ": ", false);
+    scptr char *header_value = partial_strdup(curr_header, &curr_header_offs, "\n", false);
     if (rp_exit(!header_key || !header_value, error_msg, "Malformed header in request!")) return NULL;
 
     htable_result_t ins_res = htable_insert(headers, header_key, strdup(header_value));
@@ -45,7 +45,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   size_t str_offs = 0, vers_offs = 0;
 
   // Cut method string
-  scptr char *method_str = cws_strdup_until(request, &str_offs, " ", false);
+  scptr char *method_str = partial_strdup(request, &str_offs, " ", false);
   if (rp_exit(!method_str, error_msg, "HTTP method missing!")) return NULL;
 
   // Parse method string
@@ -53,7 +53,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   if (rp_exit(!cws_http_method_parse(method_str, &method), error_msg, "Unsupported HTTP method!")) return NULL;
 
   // Cut URI string
-  scptr char *raw_uri = cws_strdup_until(request, &str_offs, " ", false);
+  scptr char *raw_uri = partial_strdup(request, &str_offs, " ", false);
   if (rp_exit(!raw_uri, error_msg, "URI missing!")) return NULL;
 
   // Parse URI string
@@ -61,18 +61,18 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   if (rp_exit(!cws_uri_parse(raw_uri, &uri, error_msg), error_msg, "Could not parse the URI!")) return NULL;
 
   // Cut HTTP version
-  scptr char *raw_vers = cws_strdup_until(request, &str_offs, "\n", false);
+  scptr char *raw_vers = partial_strdup(request, &str_offs, "\n", false);
   if (rp_exit(!raw_vers, error_msg, "HTTP version missing!")) return NULL;
 
   // Skip "HTTP/"
-  cws_strdup_until(raw_vers, &vers_offs, "/", true);
+  partial_strdup(raw_vers, &vers_offs, "/", true);
 
   // Cut major version
-  scptr char *vers_major_str = cws_strdup_until(raw_vers, &vers_offs, ".", false);
+  scptr char *vers_major_str = partial_strdup(raw_vers, &vers_offs, ".", false);
   if (rp_exit(!vers_major_str, error_msg, "Major HTTP version missing!")) return NULL;
 
   // Cut minor version
-  scptr char *vers_minor_str = cws_strdup_until(raw_vers, &vers_offs, "\n", false);
+  scptr char *vers_minor_str = partial_strdup(raw_vers, &vers_offs, "\n", false);
   if (rp_exit(!vers_minor_str, error_msg, "Minor HTTP version missing!")) return NULL;
 
   // Parse major/minor version
@@ -88,7 +88,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   if (!headers) return NULL;
 
   // Just get the rest of the body
-  char *body = cws_strdup_until(request, &str_offs, "\0", false);
+  char *body = partial_strdup(request, &str_offs, "\0", false);
 
   // Allocate request and set it's members
   scptr cws_request_t *req = (cws_request_t *) mman_alloc(sizeof(cws_request_t), cws_request_free);

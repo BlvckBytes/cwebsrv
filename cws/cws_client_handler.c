@@ -9,7 +9,7 @@ static void cws_print_prefix(cws_client_t *client)
 
 static void cws_serve_client(void *arg)
 {
-  cws_client_t *client = (cws_client_t *) arg;
+  scptr cws_client_t *client = (cws_client_t *) arg;
   char message[2048];
   size_t read_size;
 
@@ -47,13 +47,14 @@ static void cws_serve_client(void *arg)
   else
     printf("Disconnected!\n");
 
-  cws_print_prefix(client);
+  // Close client socket
   close(client->descriptor);
-  cws_free_client(client);
-  printf("Resources free'd!\n");
+
+  // WARNING: This is dev-phase only output!
+  mman_print_info();
 }
 
 void cws_handle_client(cws_client_t *client)
 {
-  pthread_create(client->thread, NULL, (void *) cws_serve_client, client);
+  pthread_create(client->thread, NULL, (void *) cws_serve_client, mman_ref(client));
 }

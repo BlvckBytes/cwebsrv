@@ -3,10 +3,11 @@
 
 #include "cws/cws_http_method.h"
 #include "cws/cws_uri.h"
-#include "cws/cws_util.h"
+#include "cws/cws_common.h"
 #include "datastruct/htable.h"
 #include "util/str2int.h"
 #include "util/mman.h"
+#include "util/partial_strdup.h"
 #include <stdarg.h>
 
 // Default number of headers the hash table gets allocated to

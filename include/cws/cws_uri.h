@@ -1,9 +1,10 @@
 #ifndef cws_uri_h
 #define cws_uri_h
 
-#include "cws/cws_util.h"
+#include "cws/cws_common.h"
 #include "datastruct/htable.h"
 #include "util/mman.h"
+#include "util/partial_strdup.h"
 #include "datastruct/dynarr.h"
 
 // Default number of headers the hash table gets allocated to

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "util/mman.h"
+
 /**
  * @brief Encapsulates a client socket with all it's dependencies
  */
@@ -25,6 +27,6 @@ cws_client_t *cws_alloc_client();
 /**
  * @brief Free a no longer needed client struct
  */
-void cws_free_client(cws_client_t *client);
+void cws_free_client(void *ref);
 
 #endif

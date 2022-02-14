@@ -4,7 +4,7 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg)
 {
   // Parse the path without parameters
   size_t raw_uri_offs = 0;
-  char *path = cws_strdup_until(raw_uri, &raw_uri_offs, "?", false);
+  char *path = partial_strdup(raw_uri, &raw_uri_offs, "?", false);
   if (rp_exit(!path, error_msg, "Could not parse the path!")) return false;
 
   htable_t *query = htable_alloc(CWS_DEF_NUM_QUERYPARAMS, CWS_MAX_NUM_QUERYPARAMS, dynarr_free);
@@ -13,12 +13,12 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg)
   char *curr_param;
   while (
     // Parse next header line
-    (curr_param = cws_strdup_until(raw_uri, &raw_uri_offs, "&", false))
+    (curr_param = partial_strdup(raw_uri, &raw_uri_offs, "&", false))
   )
   {
     size_t curr_param_offs = 0;
-    scptr char *param_key = cws_strdup_until(curr_param, &curr_param_offs, "=", false);
-    char *param_value = cws_strdup_until(curr_param, &curr_param_offs, "\0", false);
+    scptr char *param_key = partial_strdup(curr_param, &curr_param_offs, "=", false);
+    char *param_value = partial_strdup(curr_param, &curr_param_offs, "\0", false);
     if (rp_exit(!param_key || !param_value, error_msg, "Malformed query parameter in request!")) return NULL;
 
     // Ensure existence of the value list array

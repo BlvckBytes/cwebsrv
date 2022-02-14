@@ -102,4 +102,15 @@ void mman_dealloc(void *ptr_ptr);
  */
 void *mman_ref(void *ptr);
 
+/*
+============================================================================
+                                  Debugging                                 
+============================================================================
+*/
+
+/**
+ * @brief Prints informations about the current alloc/dealloc status on stdout
+ */
+void mman_print_info();
+
 #endif

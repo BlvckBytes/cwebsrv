@@ -1,5 +1,7 @@
 #include "util/mman.h"
 
+static volatile size_t mman_alloc_count, mman_dealloc_count;
+
 /*
 ============================================================================
                                   Atomical                                  
@@ -78,6 +80,7 @@ INLINED static mman_meta_t *mman_create(size_t size, mman_cleanup_f_t cf)
 void *mman_alloc(size_t size, mman_cleanup_f_t cf)
 {
   // Create new meta-info and return a pointer to the data block
+  atomic_increment(&mman_alloc_count);
   return mman_create(size, cf)->ptr;
 }
 
@@ -137,6 +140,8 @@ void mman_dealloc(void *ptr_ptr)
   if (meta->cf) meta->cf(ptr);
   free(meta);
   ptr = NULL;
+
+  atomic_increment(&mman_dealloc_count);
 }
 
 /*
@@ -158,4 +163,18 @@ void *mman_ref(void *ptr)
   // Increment number of references and return pointer to the data block
   atomic_increment(&meta->refs);
   return meta->ptr;
+}
+
+/*
+============================================================================
+                                  Debugging                                 
+============================================================================
+*/
+
+void mman_print_info()
+{
+  printf("----------< MMAN Statistics >----------\n");
+  printf("> Allocated: %lu\n", mman_alloc_count);
+  printf("> Deallocated: %lu\n", mman_alloc_count);
+  printf("----------< MMAN Statistics >----------\n");
 }

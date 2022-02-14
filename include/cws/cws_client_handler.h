@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 #include "cws/cws_client.h"
-#include "cws/cws_util.h"
+#include "cws/cws_common.h"
 #include "cws/cws_request.h"
 #include "util/mman.h"
 
