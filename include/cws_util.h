@@ -5,8 +5,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#include "mman.h"
-#include "htable.h"
+#include "util/mman.h"
+#include "datastruct/htable.h"
 
 /**
  * @brief Print all key/value pairs within a hash table

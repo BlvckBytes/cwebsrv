@@ -4,9 +4,9 @@
 #include "cws_http_method.h"
 #include "cws_uri.h"
 #include "cws_util.h"
-#include "htable.h"
-#include "str2int.h"
-#include "mman.h"
+#include "datastruct/htable.h"
+#include "util/str2int.h"
+#include "util/mman.h"
 #include <stdarg.h>
 
 // Default number of headers the hash table gets allocated to

@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "mman.h"
+#include "util/mman.h"
 
 /**
  * @brief Represents the dynamic array, keeping track of it's

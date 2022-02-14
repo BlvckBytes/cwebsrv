@@ -14,6 +14,14 @@ typedef enum {
     STR2INT_INCONVERTIBLE
 } str2int_errno_t;
 
+/**
+ * @brief Converts a string to an integer
+ * 
+ * @param out Output buffer pointer
+ * @param s String to parse
+ * @param base Base to parse in
+ * @return str2int_errno_t Result of operation
+ */
 str2int_errno_t str2int(int *out, char *s, int base);
 
 #endif

@@ -1,4 +1,4 @@
-#include "dynarr.h"
+#include "datastruct/dynarr.h"
 
 dynarr_t *dynarr_alloc(size_t array_size, size_t array_max_size, mman_cleanup_f_t cf)
 {

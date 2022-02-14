@@ -2,9 +2,9 @@
 #define cws_uri_h
 
 #include "cws_util.h"
-#include "htable.h"
-#include "mman.h"
-#include "dynarr.h"
+#include "datastruct/htable.h"
+#include "util/mman.h"
+#include "datastruct/dynarr.h"
 
 // Default number of headers the hash table gets allocated to
 #define CWS_DEF_NUM_QUERYPARAMS 4UL
