@@ -26,7 +26,7 @@ bool cws_http_method_parse(char *string, cws_http_method_t *output)
   for (size_t i = 0; i < cws_http_method_str_len; i++)
   {
     const char *curr = cws_http_method_str[i];
-    if (strcmp(curr, string) != 0) continue;
+    if (strncmp(curr, string, strlen(curr)) != 0) continue;
     *output = (cws_http_method_t) i;
     return true;
   }
