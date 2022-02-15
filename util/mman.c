@@ -4,51 +4,25 @@ static volatile size_t mman_alloc_count, mman_dealloc_count;
 
 /*
 ============================================================================
-                                  Atomical                                  
+                                 Meta Info                                  
 ============================================================================
 */
 
-/**
- * @brief Atomically add to a given number
- * 
- * @param target Target number to add to
- * @param value Value to add
- * @return size_t New value of the variable
- */
-INLINED static size_t atomic_add(volatile size_t *target, const size_t value)
+mman_meta_t *mman_fetch_meta(void *ptr)
 {
-  size_t old, new;
+  // Do nothing for nullptrs
+  if (ptr == NULL) return NULL;
 
-  // Try to compare and swap atomically until succeeded
-  do {
-    old = *target;
-    new = old + value;
-  } while (!__sync_bool_compare_and_swap(target, old, new));
+  // Fetch the meta info allocated before the data block and
+  // assure that it's actually a managed resource
+  mman_meta_t *meta = ptr - sizeof(mman_meta_t);
+  if (ptr != meta->ptr)
+  {
+    fprintf(stderr, "Invalid resource passed to \"mman_dealloc\"!\n");
+    return NULL;
+  }
 
-  // Return the new value
-  return new;
-}
-
-/**
- * @brief Atomically add one to a given number
- * 
- * @param target Target number to increment
- * @return size_t New value of the variable
- */
-INLINED static size_t atomic_increment(volatile size_t *target)
-{
-  return atomic_add(target, 1);
-}
-
-/**
- * @brief Atomically remove one from a given number
- * 
- * @param target Target number to decrement
- * @return size_t New value of the variable
- */
-INLINED static size_t atomic_decrement(volatile size_t *target)
-{
-  return atomic_add(target, -1);
+  return meta;
 }
 
 /*
@@ -60,31 +34,39 @@ INLINED static size_t atomic_decrement(volatile size_t *target)
 /**
  * @brief Allocate a new meta-info structure as well as it's trailing data block
  * 
- * @param size Size of the data block in bytes
+ * @param block_size Size of one data block in bytes
+ * @param num_blocks Number of blocks with block_size
  * @param cf Cleanup function
  * @return mman_meta_t Pointer to the meta-info
  */
-INLINED static mman_meta_t *mman_create(size_t size, mman_cleanup_f_t cf)
+INLINED static mman_meta_t *mman_create(size_t block_size, size_t num_blocks, mman_cleanup_f_t cf)
 {
-  mman_meta_t *meta = (mman_meta_t *) malloc(sizeof(mman_meta_t) + size);
+  mman_meta_t *meta = (mman_meta_t *) malloc(
+    sizeof(mman_meta_t) // Meta information
+    + (block_size * num_blocks) // Data blocks
+  );
 
   *meta = (mman_meta_t) {
-    .ptr = meta + 1, // Resource starts right after metadata
-    .cf = cf, // Set cleanup function
-    .refs = 1 // Starting out with one reference
+    .ptr = meta + 1,
+    .block_size = block_size,
+    .num_blocks = num_blocks,
+    .cf = cf,
+    .refs = 1
   };
 
   return meta;
 }
 
-void *mman_alloc(size_t size, mman_cleanup_f_t cf)
+void *mman_alloc(size_t block_size, size_t num_blocks, mman_cleanup_f_t cf)
 {
-  // Create new meta-info and return a pointer to the data block
+  // INFO: Increment the allocation count for debugging purposes
   atomic_increment(&mman_alloc_count);
-  return mman_create(size, cf)->ptr;
+
+  // Create new meta-info and return a pointer to the data block
+  return mman_create(block_size, num_blocks, cf)->ptr;
 }
 
-void *mman_realloc(void *ptr_ptr, size_t new_size)
+void *mman_realloc(void *ptr_ptr, size_t block_size, size_t num_blocks)
 {
   // Receiving a pointer to the pointer to the reference, deref once
   void *ptr = *((void **) ptr_ptr);
@@ -98,10 +80,15 @@ void *mman_realloc(void *ptr_ptr, size_t new_size)
   }
 
   // Reallocate whole meta object
-  meta = realloc(meta, new_size);
+  meta = realloc(meta,
+    sizeof(mman_meta_t) // Meta information
+    + (block_size * num_blocks) // Data blocks
+  );
 
-  // Update pointer and return updated pointer
+  // Update pointer, size and return updated pointer
   meta->ptr = meta + 1;
+  meta->block_size = block_size;
+  meta->num_blocks = num_blocks;
   return meta->ptr;
 }
 
@@ -111,37 +98,42 @@ void *mman_realloc(void *ptr_ptr, size_t new_size)
 ============================================================================
 */
 
-void mman_dealloc_direct(void *ptr)
+INLINED static bool mman_dealloc_direct(mman_meta_t *meta)
 {
-  mman_dealloc(&ptr);
+  // Do nothing for nullptrs
+  if (!meta) return false;
+
+  // Call additional cleanup function, if applicable
+  if (meta->cf) meta->cf(meta);
+
+  // Free the whole allocated (meta- + data-) blocks by the head-ptr
+  free(meta);
+  meta = NULL;
+
+  // Successful deallocation
+  return true;
 }
 
-void mman_dealloc(void *ptr_ptr)
+void mman_dealloc(void *ptr)
 {
-  // Receiving a pointer to the pointer to the reference, deref once
-  void *ptr = *((void **) ptr_ptr);
+  mman_meta_t *meta = mman_fetch_meta(ptr);
+  if (!meta) return;
 
-  // Do nothing for already free'd resources
-  if (ptr == NULL) return;
+  if (mman_dealloc_direct(meta))
+    // INFO: Increment the deallocation count for debugging purposes
+    atomic_increment(&mman_dealloc_count);
+}
 
-  // Fetch the meta info allocated before the data block
-  mman_meta_t *meta = ptr - sizeof(mman_meta_t);
-  if (ptr != meta->ptr)
-  {
-    fprintf(stderr, "Invalid resource passed to \"mman_dealloc\"!\n");
-    return;
-  }
+void mman_attr_dealloc(void *ptr_ptr)
+{
+  mman_meta_t *meta = mman_fetch_meta(*((void **) ptr_ptr));
+  if (!meta) return;
 
   // Decrease number of active references
   // Do nothing as long as active references remain
   if (atomic_decrement(&meta->refs) > 0) return;
 
-  // Free the resource, also call cleanup on it
-  if (meta->cf) meta->cf(ptr);
-  free(meta);
-  ptr = NULL;
-
-  atomic_increment(&mman_dealloc_count);
+  mman_dealloc_direct(meta);
 }
 
 /*
@@ -152,13 +144,8 @@ void mman_dealloc(void *ptr_ptr)
 
 void *mman_ref(void *ptr)
 {
-  // Fetch the meta info allocated before the data block
-  mman_meta_t *meta = ptr - sizeof(mman_meta_t);
-  if (ptr != meta->ptr)
-  {
-    fprintf(stderr, "Invalid resource passed to \"cmm_dealloc\"!\n");
-    return NULL;
-  }
+  mman_meta_t *meta = mman_fetch_meta(ptr);
+  if (!meta) return NULL;
 
   // Increment number of references and return pointer to the data block
   atomic_increment(&meta->refs);

@@ -9,30 +9,38 @@
 #include <stdio.h>
 
 #include "util/mman.h"
+#include "util/atomanip.h"
+#include "util/strclone.h"
 
-#define htable_FNV_OFFSET 14695981039346656037UL
-#define htable_FNV_PRIME 1099511628211UL
+#define HTABLE_FNV_OFFSET 14695981039346656037UL
+#define HTABLE_FNV_PRIME 1099511628211UL
+#define HTABLE_MAX_KEYLEN 128UL
+
+/**
+ * @brief Cleanup function for entry values, used on removal
+ */
+typedef void (*htable_cf_t)(void *);
 
 typedef enum
 {
-  htable_SUCCESS,
-  htable_KEY_NOT_FOUND,
-  htable_KEY_ALREADY_EXISTS,
-  htable_FULL,
+  HTABLE_SUCCESS,
+  HTABLE_KEY_NOT_FOUND,
+  HTABLE_KEY_ALREADY_EXISTS,
+  HTABLE_KEY_TOO_LONG,
+  HTABLE_FULL,
+  HTABLE_NULL_VALUE,
 } htable_result_t;
-
-/**
- * @brief Stringifies an individual entry's value for visualization
- */
-typedef char *(*htable_value_stringifier_t)(void *);
 
 /**
  * @brief Represents an individual k-v pair entry in the table
  */
-typedef struct
+typedef struct htable_entry
 {
   char *key;
   void *value;
+
+  // Next link for the linked-list on this slot
+  struct htable_entry *_next;
 } htable_entry_t;
 
 /**
@@ -41,34 +49,30 @@ typedef struct
 typedef struct
 {
   // Actual table, list of entries
-  htable_entry_t *table;
+  htable_entry_t **slots;
 
-  // Current allocated size of the table
-  size_t _table_size;
+  // Allocated number of slots
+  size_t _slot_count;
 
-  // Maximum size the table can grow to
-  size_t _table_cap;
+  // Current number of items in the table
+  size_t _item_count;
+
+  // Maximum number of slots to be allocated when growing
+  size_t _item_cap;
 
   // Cleanup function for the table items
-  mman_cleanup_f_t _cf;
+  htable_cf_t _cf;
 } htable_t;
 
 /**
  * @brief Allocate a new, empty table
  * 
- * @param table_size Size of the table
- * @param table_max_size Maximum size of the table, set to table_size for no automatic growth
+ * @param slot_count Amount of slots to allocate
+ * @param item_cap Maximum number of items stored
  * @param cf Cleanup function for the items
  * @return htable_t* Pointer to the new table
  */
-htable_t *htable_alloc(size_t table_size, size_t table_max_size, mman_cleanup_f_t cf);
-
-/**
- * @brief Free a previously allocated table
- * 
- * @param ref Table reference
- */
-void htable_free(void *ref);
+htable_t *htable_make(size_t slot_count, size_t item_cap, htable_cf_t cf);
 
 /**
  * @brief Insert a new item into the table
@@ -109,13 +113,5 @@ htable_result_t htable_fetch(htable_t *table, char *key, void **output);
  * @param output String array pointer buffer
  */
 void htable_list_keys(htable_t *table, char ***output);
-
-/**
- * @brief Print the table's key value pairs
- * 
- * @param table Table reference
- * @param stringifier Value stringifier function
- */
-void htable_visualize(htable_t *table, htable_value_stringifier_t stringifier);
 
 #endif

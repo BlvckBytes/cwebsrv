@@ -5,6 +5,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#include "util/common_macros.h"
+#include "util/atomanip.h"
 
 /*
 ============================================================================
@@ -13,10 +17,7 @@
 */
 
 // Marks a memory managed variable
-#define scptr __attribute__((cleanup(mman_dealloc)))
-
-// Marks an always inlined function
-#define INLINED __attribute__((always_inline)) inline
+#define scptr __attribute__((cleanup(mman_attr_dealloc)))
 
 /*
 ============================================================================
@@ -24,18 +25,27 @@
 ============================================================================
 */
 
+// Forward ref
+typedef struct mman_meta mman_meta_t;
+
 /**
  * @brief Cleanup function used for external destructuring of a resource
  */
-typedef void (*mman_cleanup_f_t)(void *);
+typedef void (*mman_cleanup_f_t)(mman_meta_t *);
 
 /**
  * @brief Meta-information of a memory managed resource
  */
-typedef struct
+typedef struct mman_meta
 {
   // Pointer to the resource
   void *ptr;
+
+  // Size of one data block
+  size_t block_size;
+
+  // Number of blocks with block_size
+  size_t num_blocks;
 
   // Cleanup function invoked before the resource gets free'd
   mman_cleanup_f_t cf;
@@ -46,27 +56,43 @@ typedef struct
 
 /*
 ============================================================================
+                                 Meta Info                                  
+============================================================================
+*/
+
+/**
+ * @brief Fetch the meta-block of a managed resource
+ * 
+ * @param ptr Pointer to the data-block of a managed resource
+ * @return mman_meta_t* Retrieved meta-block or NULL if the resource is invalid
+ */
+mman_meta_t *mman_fetch_meta(void *ptr);
+
+/*
+============================================================================
                                  Allocation                                 
 ============================================================================
 */
 
 /**
- * @brief Allocate memory and get a wrapped reference to it
+ * @brief Allocate memory and get a managed reference to it
  * 
- * @param size Number of bytes to allocate
- * @param cf Cleanup function, NULL if none is required
+ * @param block_size Size of one data block
+ * @param size Number of blocks to allocate
+ * @param cf Function for additional cleanup operations on pointers inside the data-block,
+ * leave this as NULL when none exist and nothing has been allocated separately
  * @return void* Pointer to the resource, NULL if no space left
  */
-void *mman_alloc(size_t size, mman_cleanup_f_t cf);
+void *mman_alloc(size_t block_size, size_t num_blocks, mman_cleanup_f_t cf);
 
 /**
- * @brief Reallocate a mman managed datablock
+ * @brief Reallocate a managed datablock
  * 
  * @param ptr_ptr Pointer to the pointer to the resource
  * @param new_size New size of the data block
- * @return void* Pointer to the data block
+ * @return void* Pointer to the extended data block, NULL if no space is left
  */
-void *mman_realloc(void *ptr_ptr, size_t new_size);
+void *mman_realloc(void *ptr_ptr, size_t block_size, size_t num_blocks);
 
 /*
 ============================================================================
@@ -75,18 +101,24 @@ void *mman_realloc(void *ptr_ptr, size_t new_size);
 */
 
 /**
- * @brief Deallocate a pointer directly
+ * @brief Deallocates a mman allocated resource manually
+ * 
+ * WARNING: This ignores the number of references and can be treated
+ * as a force deallocator!
  * 
  * @param ptr Pointer to the resource
  */
-void mman_dealloc_direct(void *ptr);
+void mman_dealloc(void *ptr);
 
 /**
- * @brief Deallocate a wrapped resource when it goes out of scope
+ * @brief Deallocate a managed resource when it goes out of scope and
+ * has no references left pointing at it.
+ * 
+ * WARNING: Only to be called by GCC attributes, not manually!
  * 
  * @param ptr_ptr Pointer to the pointer to the resource
  */
-void mman_dealloc(void *ptr_ptr);
+void mman_attr_dealloc(void *ptr_ptr);
 
 /*
 ============================================================================

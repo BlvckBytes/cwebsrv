@@ -1,42 +1,52 @@
 #include "datastruct/dynarr.h"
 
-dynarr_t *dynarr_alloc(size_t array_size, size_t array_max_size, mman_cleanup_f_t cf)
+/**
+ * @brief Clean up individual items
+ */
+INLINED static void dynarr_item_cleanup(void *ref, dynarr_cf_t cf)
 {
-  scptr dynarr_t *res = mman_alloc(sizeof(dynarr_t), dynarr_free);
 
-  res->_array_size = array_size;
-  res->_array_cap = array_max_size;
-  res->_cf = cf;
+  cf(ref);
+}
+
+/**
+ * @brief Clean up a no longer needed dynarr struct and all of it's items
+ */
+INLINED static void dynarr_cleanup(mman_meta_t *ref)
+{
+  dynarr_t *dynarr = (dynarr_t *) ref;
+
+  // Clean up items if applicable
+  if (dynarr->_cf)
+  {
+    for (size_t i = 0; i < dynarr->_array_size; i++)
+      dynarr_item_cleanup(dynarr->items[i], dynarr->_cf);
+  }
+
+  // Free the item pointers
+  mman_dealloc(dynarr->items);
+}
+
+dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, dynarr_cf_t cf)
+{
+  scptr dynarr_t *res = mman_alloc(sizeof(dynarr_t), 1, dynarr_cleanup);
+
+  res->_array_cap = array_max_size; // no freeing
+  res->_array_size = array_size; // no freeing
+  res->_cf = cf; // no freeing
 
   // Allocate all slots and initialize them to NULL
-  res->items = (void *) mman_alloc(sizeof(void *) * array_size, free);
+  res->items = (void *) mman_alloc(sizeof(void *), array_size, NULL); // needs mman freeing
   for (size_t i = 0; i < array_size; i++)
     res->items[i] = NULL;
 
   return mman_ref(res);
 }
 
-void dynarr_free(void *ref)
-{
-  dynarr_t *dynarr = (dynarr_t *) ref;
-
-  // Clean up items
-  if (dynarr->_cf)
-  {
-    for (size_t i = 0; i < dynarr->_array_size; i++)
-      dynarr->_cf(dynarr->items[i]);
-  }
-
-  // Clean up pointers and struct
-  mman_dealloc(dynarr->items);
-  dynarr->items = NULL;
-  mman_dealloc(dynarr);
-}
-
 static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
 {
   // Resize memory block of the array
-  scptr void *new_arr = mman_realloc(&arr->items, sizeof(void *) * new_size);
+  scptr void *new_arr = mman_realloc(&arr->items, sizeof(void *), new_size);
   arr->items = mman_ref(new_arr);
   
   // Initialize new slots

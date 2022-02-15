@@ -5,7 +5,14 @@
 #include "datastruct/htable.h"
 #include "util/mman.h"
 #include "util/partial_strdup.h"
+#include "util/strclone.h"
 #include "datastruct/dynarr.h"
+
+/*
+============================================================================
+                               Configuration                                
+============================================================================
+*/
 
 // Default number of headers the hash table gets allocated to
 #define CWS_DEF_NUM_QUERYPARAMS 4UL
@@ -19,7 +26,16 @@
 // Maximum number of same named query parameter values (array)
 #define CWS_MAX_NUM_SAME_QUERYPARAMS 128UL
 
-typedef struct
+// Maximum length in characters of the raw URI
+#define CWS_URI_MAXLEN 1024UL
+
+/*
+============================================================================
+                                    URI                                     
+============================================================================
+*/
+
+typedef struct cws_uri
 {
   // Raw URI as found in the request
   char *raw_uri;
@@ -32,8 +48,16 @@ typedef struct
   htable_t *query;
 } cws_uri_t;
 
+/**
+ * @brief Parse a URI and all it's elements by it's raw string
+ * 
+ * @param raw_uri Raw URI string
+ * @param output URI output buffer
+ * @param error_msg Error message output buffer
+ * 
+ * @return true URI parsed successfully
+ * @return false Could not parse URI
+ */
 bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg);
-
-void cws_uri_free(void *ref);
 
 #endif

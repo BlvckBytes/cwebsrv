@@ -1,156 +1,120 @@
 #include "datastruct/htable.h"
 
-htable_t *htable_alloc(size_t table_size, size_t table_max_size, mman_cleanup_f_t cf)
+/**
+ * @brief Clean up an individual slot
+ */
+INLINED static void htable_slot_cleanup(htable_entry_t *slot, htable_cf_t cf)
 {
-  htable_t *table = (htable_t *) mman_alloc(sizeof(htable_t), htable_free);
+  // Call the item free function, if applicable
+  if (cf && slot->value) cf(slot->value);
 
-  table->_table_size = table_size;
-  table->_table_cap = table_max_size;
-  table->_cf = cf;
+  // Free the cloned string key
+  mman_dealloc(slot->key);
 
-  // Allocate all slots and initialize them to NULL keys
-  table->table = (htable_entry_t *) mman_alloc(sizeof(htable_entry_t) * table_size, free);
-  for (size_t i = 0; i < table_size; i++)
-    table->table[i] = (htable_entry_t) { NULL, NULL };
+  // Free the next chain in the linked list, if applicable
+  if (slot->_next) htable_slot_cleanup(slot->_next, cf);
+}
+
+/**
+ * @brief Clean up a no longer needed htable struct and it's slots
+ */
+INLINED static void htable_cleanup(mman_meta_t *ref)
+{
+  htable_t *table = (htable_t *) ref->ptr;
+
+  // Free all table slots
+  for (size_t i = 0; i < table->_slot_count; i++)
+  {
+    // Skip empty slots
+    htable_entry_t *slot = table->slots[i];
+    if (!slot) continue;
+
+    htable_slot_cleanup(slot, table->_cf);
+  }
+
+  // Free the slot pointers
+  mman_dealloc(table->slots);
+}
+
+htable_t *htable_make(size_t slot_count, size_t item_cap, htable_cf_t cf)
+{
+  htable_t *table = (htable_t *) mman_alloc(sizeof(htable_t), 1, htable_cleanup);
+  
+  table->_item_count = 0; // No freeing
+  table->_slot_count = slot_count; // No freeing
+  table->_item_cap = item_cap; // No freeing
+  table->_cf = cf; // No freeing
+
+  // Allocate all slots and initialize them to nullptrs
+  table->slots = (htable_entry_t **) mman_alloc(sizeof(htable_entry_t *), slot_count, NULL); // needs mman freeing
+  for (size_t i = 0; i < slot_count; i++)
+    table->slots[i] = NULL;
 
   return mman_ref(table);
 }
 
-void htable_free(void *ref)
-{
-  htable_t *table = (htable_t *) ref;
-
-  // Free all table entries
-  for (size_t i = 0; i < table->_table_size; i++)
-  {
-    // Call the item free function on all items
-    if (table->_cf) table->_cf(table->table[i].value);
-
-    // Free the duped string
-    free(table->table[i].key);
-  }
-
-  // Free the actual table as well as it's container
-  mman_dealloc(table->table);
-  table->table = NULL;
-  mman_dealloc(table);
-}
-
-size_t htable_hash(char *key, size_t table_size)
+/**
+ * @brief Generate a hash based on a string-key within the table slot index range
+ * 
+ * @param key String key to calculate on
+ * @param slot_count Count of slots this table has
+ * @return size_t Matching index in hash table
+ */
+INLINED static size_t htable_hash(char *key, size_t slot_count)
 {
   // Start out at the specified offset
-  size_t hash = htable_FNV_OFFSET;
+  size_t hash = HTABLE_FNV_OFFSET;
 
   // Apply bitops for each char in the string
   for (char *c = key; *c; c++)
   {
     hash ^= (size_t)(*c);
-    hash *= htable_FNV_PRIME;
+    hash *= HTABLE_FNV_PRIME;
   }
 
-  return hash % table_size;
-}
-
-void htable_write_slot(htable_t *table, size_t slot, char *key, void *elem)
-{
-  htable_entry_t *entry = &table->table[slot];
-
-  // Free old string in case it exists
-  if (entry->key)
-    free(entry->key);
-
-  // Copy over key
-  entry->key = strdup(key);
-
-  // Set the value
-  entry->value = elem;
-}
-
-/**
- * @brief Internal routine for resizing the hash table
- * 
- * @param table Table to resize
- * @param new_size New size of the table
- */
-static void htable_resize(htable_t *table, size_t new_size)
-{
-  // Resize memory block of the table
-  scptr void *new_table = mman_realloc(&table->table, sizeof(htable_entry_t) * new_size);
-  table->table = mman_ref(new_table);
-  
-  // Initialize new slots
-  for (size_t i = table->_table_size; i < new_size; i++)
-    table->table[i] = (htable_entry_t) { NULL, NULL };
-  
-  // Keep track of the new size
-  table->_table_size = new_size;
+  return hash % slot_count;
 }
 
 htable_result_t htable_insert(htable_t *table, char *key, void *elem)
 {
-  size_t index = htable_hash(key, table->_table_size);
+  // Already containing as many items as allowed
+  if (table->_item_count >= table->_item_cap) return HTABLE_FULL;
 
-  // Key already exists
-  if (table->table[index].key != NULL)
-  {
-    for (size_t i = 0; i < table->_table_size; i++)
-    {
-      size_t slot = (i + index) % table->_table_size;
-      htable_entry_t *entry = &table->table[slot];
+  // Tried to insert a null value
+  if (!elem) return HTABLE_NULL_VALUE;
 
-      // Slot already occupied
-      if (entry->key != NULL)
-      {
-        // Key already in the table
-        if (strcmp(entry->key, key) == 0)
-          return htable_KEY_ALREADY_EXISTS;
+  // Try to clone the key using a max-length
+  scptr char *slot_key = strclone(key, HTABLE_MAX_KEYLEN);
+  if (!slot_key) return HTABLE_KEY_TOO_LONG;
 
-        continue;
-      }
+  // Find the target slot and create a new entry
+  size_t slot_id = htable_hash(key, table->_slot_count);
+  htable_entry_t **slot = &table->slots[slot_id];
+  htable_entry_t *entry = (htable_entry_t *) mman_alloc(sizeof(htable_entry_t), 1, NULL); // needs mman freeing
 
-      // Take up first available free slot
-      htable_write_slot(table, slot, key, elem);
-      return htable_SUCCESS;
-    }
+  entry->key = mman_ref(slot_key);
+  entry->value = elem;
+  entry->_next = *slot;
+  *slot = entry;
 
-    // TODO: Size down as well (on removal)
-    size_t rem_cap = table->_table_cap - table->_table_size;
-    if (rem_cap > 0)
-    {
-      // Try to double the amount of slots, go straight to the cap otherwise
-      size_t new_size = table->_table_size * 2;
-      if (new_size > rem_cap)
-        new_size = table->_table_size + rem_cap;
-
-      htable_resize(table, new_size);
-
-      // Retry insertion
-      return htable_insert(table, key, elem);
-    }
-
-    // Could not find another empty slot
-    return htable_FULL;
-  }
-
-  // Slot is not yet occupied, success
-  htable_write_slot(table, index, key, elem);
-  return htable_SUCCESS;
+  // Increment item counter
+  atomic_increment(&table->_item_count);
+  return HTABLE_SUCCESS;
 }
 
-htable_entry_t *find_entry(htable_t *table, char *key)
+INLINED static htable_entry_t *find_entry(htable_t *table, char *key)
 {
-  size_t slot = htable_hash(key, table->_table_size);
+  size_t slot_id = htable_hash(key, table->_slot_count);
+  htable_entry_t *slot = table->slots[slot_id];
 
-  for (size_t i = 0; i < table->_table_size; i++)
+  // Traverse linked list
+  while (slot)
   {
-    htable_entry_t *entry = &table->table[(i + slot) % table->_table_size];
+    // Search slot that contains this key
+    if (strncmp(key, slot->key, HTABLE_MAX_KEYLEN) == 0)
+      return slot;
 
-    // Slot holds nothing
-    if (entry->key == NULL) continue;
-
-    // Not in current slot!
-    if (strcmp(entry->key, key) != 0) continue;
-    return entry;
+    slot = slot->_next;
   }
 
   // Not found
@@ -159,16 +123,37 @@ htable_entry_t *find_entry(htable_t *table, char *key)
 
 htable_result_t htable_remove(htable_t *table, char *key)
 {
-  htable_entry_t *entry = find_entry(table, key);
+  size_t slot_id = htable_hash(key, table->_slot_count);
+  htable_entry_t *slot = table->slots[slot_id];
 
-  // Entry does not exist
-  if (!entry) return htable_KEY_NOT_FOUND;
+  // Traverse linked list
+  htable_entry_t *prev_slot = NULL;
+  while (slot)
+  {
+    // Search slot that contains this key
+    if (strncmp(key, slot->key, HTABLE_MAX_KEYLEN) == 0)
+    {
+      // Not the head, remove from linked list
+      if (prev_slot)
+        prev_slot->_next = slot->_next;
 
-  // Remove by freeing the string key again and nulling the value pointer
-  free(entry->key);
-  entry->key = NULL;
-  entry->value = NULL;
-  return htable_SUCCESS;
+      // This is the head, set table's pointer
+      else
+        slot = slot->_next;
+
+      // Deallocate and decrement item counter
+      if (table->_cf) table->_cf(slot->value);
+      mman_dealloc(slot);
+      atomic_decrement(&table->_item_count);
+      return HTABLE_SUCCESS;
+    }
+
+    prev_slot = slot;
+    slot = slot->_next;
+  }
+
+  // Not found
+  return HTABLE_KEY_NOT_FOUND;
 }
 
 htable_result_t htable_fetch(htable_t *table, char *key, void **output)
@@ -178,45 +163,31 @@ htable_result_t htable_fetch(htable_t *table, char *key, void **output)
   if (entry)
   {
     *output = entry->value;
-    return htable_SUCCESS;
+    return HTABLE_SUCCESS;
   }
 
   *output = NULL;
-  return htable_KEY_NOT_FOUND;
-}
-
-void htable_visualize(htable_t *table, htable_value_stringifier_t stringifier)
-{
-  for (size_t i = 0; i < table->_table_size; i++)
-  {
-    htable_entry_t entry = table->table[i];
-
-    char *str_val = entry.value ? stringifier(entry.value) : "NULL";
-
-    printf(
-      "table[%s] = %s\n",
-      (entry.key == NULL ? "NULL" : entry.key),
-      str_val
-    );
-
-    if (entry.value)
-      free(str_val);
-  }
+  return HTABLE_KEY_NOT_FOUND;
 }
 
 void htable_list_keys(htable_t *table, char ***output)
 {
-  size_t num_keys = 0;
-
-  for (size_t i = 0; i < table->_table_size; ++i)
-    if (table->table[i].key) num_keys++;
-
-  *output = (char **) mman_alloc((num_keys + 1) * sizeof(char *), NULL);
+  *output = (char **) mman_alloc(sizeof(char *), table->_item_count + 1, NULL);
 
   size_t output_index = 0;
-  for (size_t i = 0; i < table->_table_size; ++i)
-    if (table->table[i].key)
-      (*output)[output_index++] = table->table[i].key;
+  for (size_t i = 0; i < table->_slot_count; i++)
+  {
+    // Skip empty slots
+    htable_entry_t *slot = table->slots[i];
 
+    // Traverse linked list
+    while (slot && slot->key)
+    {
+      (*output)[output_index++] = slot->key;
+      slot = slot->_next;
+    }
+  }
+
+  // Terminate list
   (*output)[output_index] = 0;
 }

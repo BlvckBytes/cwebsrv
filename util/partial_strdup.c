@@ -40,7 +40,7 @@ char *partial_strdup(char *str, size_t *offs, const char* sep, bool skip)
       res_len--;
 
     // Allocate a copy
-    scptr char *res = mman_alloc(res_len + 1, NULL);
+    scptr char *res = mman_alloc(sizeof(char), res_len + 1, NULL);
 
     // Copy over string content and terminate
     for (size_t j = 0; j < res_len; j++)

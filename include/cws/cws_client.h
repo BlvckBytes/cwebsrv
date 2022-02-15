@@ -11,7 +11,7 @@
 /**
  * @brief Encapsulates a client socket with all it's dependencies
  */
-typedef struct
+typedef struct cws_client
 {
   struct sockaddr_in *address;
   socklen_t *address_size;
@@ -20,13 +20,8 @@ typedef struct
 } cws_client_t;
 
 /**
- * @brief Allocate a new non-initialized client struct
+ * @brief Creates a new non-initialized client struct
  */
-cws_client_t *cws_alloc_client();
-
-/**
- * @brief Free a no longer needed client struct
- */
-void cws_free_client(void *ref);
+cws_client_t *cws_client_make();
 
 #endif

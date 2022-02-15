@@ -7,6 +7,11 @@
 #include "util/mman.h"
 
 /**
+ * @brief Cleanup function for items, used on removal
+ */
+typedef void (*dynarr_cf_t)(void *);
+
+/**
  * @brief Represents the dynamic array, keeping track of it's
  * size and cleanup method
  */
@@ -22,7 +27,7 @@ typedef struct
   size_t _array_cap;
 
   // Cleanup function for the array items
-  mman_cleanup_f_t _cf;
+  dynarr_cf_t _cf;
 } dynarr_t;
 
 typedef enum
@@ -41,21 +46,14 @@ typedef enum
 } dynarr_result_t;
 
 /**
- * @brief Allocate a new, empty array
+ * @brief Make a new, empty array
  * 
  * @param array_size Size of the array
  * @param array_max_size Maximum size of the array, set to array_size for no automatic growth
  * @param cf Cleanup function for the items
  * @return dynarr_t* Pointer to the new array
  */
-dynarr_t *dynarr_alloc(size_t array_size, size_t array_max_size, mman_cleanup_f_t cf);
-
-/**
- * @brief Free a previously allocated array
- * 
- * @param ref Array reference
- */
-void dynarr_free(void *ref);
+dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, dynarr_cf_t cf);
 
 /**
  * @brief Push a new item into the array

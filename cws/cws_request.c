@@ -1,5 +1,20 @@
 #include "cws/cws_request.h"
 
+// TODO: Have a separate function for each parsing step and make it set the str_offs to SIZE_MAX on error, then just 
+// call them all on the same reference and have them return internally when str_offs reached that constant (error-marker)
+
+// TODO: Inform about size constraints in error messages
+
+/**
+ * @brief Clean up a cws_request struct that is about to be destroyed
+ */
+INLINED static void cws_request_cleanup(mman_meta_t *ref)
+{
+  mman_dealloc(((cws_request_t *) ref->ptr)->headers);
+  mman_dealloc(((cws_request_t *) ref->ptr)->uri);
+  mman_dealloc(((cws_request_t *) ref->ptr)->body);
+}
+
 /**
  * @brief Request parser header parsing subroutine
  * 
@@ -8,10 +23,10 @@
  * @param error_msg Error message output reference
  * @return htable_t* Table reference on success, NULL on errors
  */
-static htable_t *parse_headers(char *request, size_t *str_offs, const char **error_msg)
+INLINED static htable_t *parse_headers(char *request, size_t *str_offs, const char **error_msg)
 {
   // Create headers hash table
-  scptr htable_t *headers = htable_alloc(CWS_DEF_NUM_HEADERS, CWS_MAX_NUM_HEADERS, free);
+  scptr htable_t *headers = htable_make(CWS_DEF_NUM_HEADERS, CWS_MAX_NUM_HEADERS, mman_dealloc);
 
   // Parse all available headers
   char *curr_header;
@@ -29,11 +44,11 @@ static htable_t *parse_headers(char *request, size_t *str_offs, const char **err
     scptr char *header_value = partial_strdup(curr_header, &curr_header_offs, "\n", false);
     if (rp_exit(!header_key || !header_value, error_msg, "Malformed header in request!")) return NULL;
 
-    htable_result_t ins_res = htable_insert(headers, header_key, strdup(header_value));
-    if (rp_exit(ins_res == htable_KEY_ALREADY_EXISTS, error_msg, "Duplicate header in request!")) return NULL;
-    if (rp_exit(ins_res == htable_FULL, error_msg, "Too many headers in request!")) return NULL;
+    htable_result_t ins_res = htable_insert(headers, header_key, mman_ref(header_value));
+    if (rp_exit(ins_res == HTABLE_KEY_ALREADY_EXISTS, error_msg, "Duplicate header in request!")) return NULL;
+    if (rp_exit(ins_res == HTABLE_FULL, error_msg, "Too many headers in request!")) return NULL;
 
-    mman_dealloc_direct(curr_header);
+    mman_dealloc(curr_header);
   }
 
   return mman_ref(headers);
@@ -57,7 +72,7 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   if (rp_exit(!raw_uri, error_msg, "URI missing!")) return NULL;
 
   // Parse URI string
-  cws_uri_t *uri;
+  scptr cws_uri_t *uri;
   if (rp_exit(!cws_uri_parse(raw_uri, &uri, error_msg), error_msg, "Could not parse the URI!")) return NULL;
 
   // Cut HTTP version
@@ -84,33 +99,22 @@ cws_request_t *cws_request_parse(char *request, const char **error_msg)
   )) return NULL;
 
   // Parse the headers
-  htable_t *headers = parse_headers(request, &str_offs, error_msg);
+  scptr htable_t *headers = parse_headers(request, &str_offs, error_msg);
   if (!headers) return NULL;
 
   // Just get the rest of the body
-  char *body = partial_strdup(request, &str_offs, "\0", false);
+  scptr char *body = partial_strdup(request, &str_offs, "\0", false);
 
   // Allocate request and set it's members
-  scptr cws_request_t *req = (cws_request_t *) mman_alloc(sizeof(cws_request_t), cws_request_free);
-  req->headers = headers; // needs mman freeing
+  scptr cws_request_t *req = (cws_request_t *) mman_alloc(sizeof(cws_request_t), 1, cws_request_cleanup);
+  req->headers = mman_ref(headers); // needs mman freeing
   req->method = method; // no freeing
-  req->uri = uri; // needs mman freeing
-  req->body = body; // needs mman freeing
+  req->uri = mman_ref(uri); // needs mman freeing
+  req->body = mman_ref(body); // needs mman freeing
   req->http_ver_major = vers_major; // no freeing
   req->http_ver_minor = vers_minor; // no freeing
 
   return mman_ref(req);
-}
-
-void cws_request_free(void *ref)
-{
-  cws_request_t *request = (cws_request_t *) ref;
-  if (!request) return;
-
-  mman_dealloc_direct(request->headers);
-  mman_dealloc_direct(request->uri);
-  mman_dealloc_direct(request->body);
-  mman_dealloc_direct(request);
 }
 
 void cws_request_print(cws_request_t *request)
@@ -144,7 +148,7 @@ void cws_request_print(cws_request_t *request)
         printf("\"%s\":\n", *key);
 
         dynarr_t *values;
-        if (htable_fetch(query, *key, (void **) &values) != htable_SUCCESS)
+        if (htable_fetch(query, *key, (void **) &values) != HTABLE_SUCCESS)
         {
           printf("error!\n");
           continue;
