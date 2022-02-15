@@ -21,7 +21,7 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, char **error_msg)
   char *path = partial_strdup(raw_uri, &raw_uri_offs, "?", false);
   if (rp_exit(!path, error_msg, "Could not parse the path!")) return false;
 
-  htable_t *query = htable_make(CWS_MIN_QUERYPARAMS, CWS_MAX_QUERYPARAMS, NULL);
+  htable_t *query_table = htable_make(CWS_MIN_QUERYPARAMS, CWS_MAX_QUERYPARAMS, NULL);
 
   // Parse all available headers
   char *curr_param;
@@ -30,6 +30,7 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, char **error_msg)
     (curr_param = partial_strdup(raw_uri, &raw_uri_offs, "&", false))
   )
   {
+    // Split on "="
     size_t curr_param_offs = 0;
     scptr char *param_key = partial_strdup(curr_param, &curr_param_offs, "=", false);
     char *param_value = partial_strdup(curr_param, &curr_param_offs, "\0", false);
@@ -37,10 +38,10 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, char **error_msg)
 
     // Ensure existence of the value list array
     dynarr_t *curr_value_list;
-    if (htable_fetch(query, param_key, (void **) &curr_value_list) == HTABLE_KEY_NOT_FOUND)
+    if (htable_fetch(query_table, param_key, (void **) &curr_value_list) == HTABLE_KEY_NOT_FOUND)
     {
       curr_value_list = dynarr_make(CWS_MIN_SAME_QUERYPARAMS, CWS_MAX_SAME_QUERYPARAMS, mman_dealloc);
-      htable_result_t ins_res = htable_insert(query, param_key, curr_value_list);
+      htable_result_t ins_res = htable_insert(query_table, param_key, curr_value_list);
       if (rp_exit(ins_res == HTABLE_FULL, error_msg, "Too many query parameters (max=%lu)!", CWS_MAX_QUERYPARAMS)) return NULL;
     }
 
@@ -54,7 +55,7 @@ bool cws_uri_parse(char *raw_uri, cws_uri_t **output, char **error_msg)
   cws_uri_t *res = (cws_uri_t *) mman_alloc(sizeof(cws_uri_t), 1, cws_uri_cleanup);
   res->raw_uri = mman_ref(uri_copy); // needs mman freeing
   res->path = path; // needs mman freeing
-  res->query = query; // needs mman freeing
+  res->query = query_table; // needs mman freeing
 
   if (output) *output = mman_ref(res);
   return true;

@@ -48,6 +48,18 @@ typedef struct cws_request
 } cws_request_t;
 
 /**
+ * @brief Represents a stage of request parsing
+ * @returns true On successful execution
+ * @returns false On errors, error-description is set in err
+ */
+typedef bool (*cws_request_parser_t)(
+  char *req,              // Full request string
+  size_t *offs,           // Offset pointer for change in place
+  cws_request_t *result,  // Parse result to which partial results are applied
+  char **err              // Error buffer ptr
+);
+
+/**
  * @brief Parse a web request by it's raw request string
  * 
  * @param request Raw request string

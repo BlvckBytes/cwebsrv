@@ -10,6 +10,8 @@ static void cws_print_prefix(cws_client_t *client)
 static void cws_serve_client(void *arg)
 {
   scptr cws_client_t *client = (cws_client_t *) arg;
+
+  // TODO: This fixed buffer is no good idea...
   char message[2048];
   size_t read_size;
 
