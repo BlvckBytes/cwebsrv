@@ -3,8 +3,6 @@
 // TODO: Have a separate function for each parsing step and make it set the str_offs to SIZE_MAX on error, then just 
 // call them all on the same reference and have them return internally when str_offs reached that constant (error-marker)
 
-// TODO: Inform about size constraints in error messages
-
 /**
  * @brief Clean up a cws_request struct that is about to be destroyed
  */
@@ -23,10 +21,10 @@ INLINED static void cws_request_cleanup(mman_meta_t *ref)
  * @param error_msg Error message output reference
  * @return htable_t* Table reference on success, NULL on errors
  */
-INLINED static htable_t *parse_headers(char *request, size_t *str_offs, const char **error_msg)
+INLINED static htable_t *parse_headers(char *request, size_t *str_offs, char **error_msg)
 {
   // Create headers hash table
-  scptr htable_t *headers = htable_make(CWS_DEF_NUM_HEADERS, CWS_MAX_NUM_HEADERS, mman_dealloc);
+  scptr htable_t *headers = htable_make(16, CWS_MAX_NUM_HEADERS, mman_dealloc);
 
   // Parse all available headers
   char *curr_header;
@@ -42,11 +40,11 @@ INLINED static htable_t *parse_headers(char *request, size_t *str_offs, const ch
     size_t curr_header_offs = 0;
     scptr char *header_key = partial_strdup(curr_header, &curr_header_offs, ": ", false);
     scptr char *header_value = partial_strdup(curr_header, &curr_header_offs, "\n", false);
-    if (rp_exit(!header_key || !header_value, error_msg, "Malformed header in request!")) return NULL;
+    if (rp_exit(!header_key || !header_value, error_msg, "Malformed header!")) return NULL;
 
     htable_result_t ins_res = htable_insert(headers, header_key, mman_ref(header_value));
     if (rp_exit(ins_res == HTABLE_KEY_ALREADY_EXISTS, error_msg, "Duplicate header in request!")) return NULL;
-    if (rp_exit(ins_res == HTABLE_FULL, error_msg, "Too many headers in request!")) return NULL;
+    if (rp_exit(ins_res == HTABLE_FULL, error_msg, "Too many headers (max=%u)!", CWS_MAX_NUM_HEADERS)) return NULL;
 
     mman_dealloc(curr_header);
   }
@@ -54,7 +52,7 @@ INLINED static htable_t *parse_headers(char *request, size_t *str_offs, const ch
   return mman_ref(headers);
 }
 
-cws_request_t *cws_request_parse(char *request, const char **error_msg)
+cws_request_t *cws_request_parse(char *request, char **error_msg)
 {
   // Request string offset trackers for parsing
   size_t str_offs = 0, vers_offs = 0;

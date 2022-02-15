@@ -25,7 +25,7 @@ static void cws_serve_client(void *arg)
     cws_print_prefix(client);
     printf("Parsed request:\n");
 
-    const char *error_msg;
+    scptr char *error_msg;
     scptr cws_request_t *req = cws_request_parse(message, &error_msg);
     cws_request_print(req);
 

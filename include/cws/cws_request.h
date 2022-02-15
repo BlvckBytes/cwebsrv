@@ -15,12 +15,8 @@
                                Configuration                                
 ============================================================================
 */
-
-// Default number of headers the hash table gets allocated to
-#define CWS_DEF_NUM_HEADERS 4UL
-
 // Maximum number of headers the hash table can grow to
-#define CWS_MAX_NUM_HEADERS 128UL
+#define CWS_MAX_NUM_HEADERS 64UL
 
 /*
 ============================================================================
@@ -58,7 +54,7 @@ typedef struct cws_request
  * @param error_msg Error message output buffer
  * @return cws_request_t* Parsed result, NULL when an error occurred
  */
-cws_request_t *cws_request_parse(char *request, const char **error_msg);
+cws_request_t *cws_request_parse(char *request, char **error_msg);
 
 /**
  * @brief Print the contents of a request on stdout

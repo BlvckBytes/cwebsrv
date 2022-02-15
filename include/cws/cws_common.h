@@ -4,8 +4,11 @@
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
 #include "util/mman.h"
+#include "util/strfmt.h"
 #include "datastruct/htable.h"
 
 /**
@@ -27,8 +30,9 @@ void cws_print_addr_in(struct sockaddr_in addr);
  * 
  * @param exit Exiting condition
  * @param error_msg Error message output reference
- * @param error Error on exiting
+ * @param error_fmt Error string format on exiting
+ * @param ... Format parameters
  */
-bool rp_exit(bool exit, const char **error_msg, const char *error);
+bool rp_exit(bool exit, char **error_msg, const char *error_fmt, ...);
 
 #endif

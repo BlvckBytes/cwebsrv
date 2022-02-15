@@ -15,16 +15,16 @@
 */
 
 // Default number of headers the hash table gets allocated to
-#define CWS_DEF_NUM_QUERYPARAMS 4UL
+#define CWS_MIN_QUERYPARAMS 4UL
 
 // Maximum number of headers the hash table can grow to
-#define CWS_MAX_NUM_QUERYPARAMS 128UL
+#define CWS_MAX_QUERYPARAMS 128UL
 
 // Default number of same named query parameter values (array)
-#define CWS_NUM_SAME_QUERYPARAMS 128UL
+#define CWS_MIN_SAME_QUERYPARAMS 128UL
 
 // Maximum number of same named query parameter values (array)
-#define CWS_MAX_NUM_SAME_QUERYPARAMS 128UL
+#define CWS_MAX_SAME_QUERYPARAMS 128UL
 
 // Maximum length in characters of the raw URI
 #define CWS_URI_MAXLEN 1024UL
@@ -58,6 +58,6 @@ typedef struct cws_uri
  * @return true URI parsed successfully
  * @return false Could not parse URI
  */
-bool cws_uri_parse(char *raw_uri, cws_uri_t **output, const char **error_msg);
+bool cws_uri_parse(char *raw_uri, cws_uri_t **output, char **error_msg);
 
 #endif

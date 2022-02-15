@@ -45,9 +45,16 @@ void cws_print_htable_keys(htable_t *table, bool val_is_arr)
   }
 }
 
-bool rp_exit(bool exit, const char **error_msg, const char *error)
+bool rp_exit(bool exit, char **error_msg, const char *error_fmt, ...)
 {
-  if (!exit) return false;
-  if (error_msg) *error_msg = error;
-  return true;
+  if (!exit | !error_msg) return false;
+
+  va_list ap;
+  va_start(ap, error_fmt);
+
+  // Format error string using specified format
+  bool res = strfmt(error_msg, error_fmt, ap);
+
+  va_end(ap);
+  return res;
 }
