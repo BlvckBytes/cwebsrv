@@ -39,7 +39,15 @@ void cws_discard_request(cws_client_t *client)
   bool waited = false;
 
   // Read non-blocking with timeouts until nothing remains
-  while ((read = recv(client->descriptor, waste_buf, sizeof(waste_buf), MSG_DONTWAIT)))
+  // TODO: Research on this topic, whether or not this style is really the only solution
+  while (
+    // Successfully read data
+    (read = recv(client->descriptor, waste_buf, sizeof(waste_buf), MSG_DONTWAIT)) > 0
+
+    // Error on recv and error means that no data is available
+    // INFO: This additional step excludes polling on a dead socket (hopefully?)
+    || (read < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+  )
   {
     // No data after read, quit reading now
     if (waited && read <= 0)
@@ -54,7 +62,12 @@ void cws_discard_request(cws_client_t *client)
   }
 }
 
-bool errif_resp(cws_client_t *client, bool error_cond, cws_response_code_t code, const char *message)
+bool errif_resp(
+  cws_client_t *client,
+  bool error_cond,
+  cws_response_code_t code,
+  const char *message
+)
 {
   // Error did not occur
   if (!error_cond) return false;

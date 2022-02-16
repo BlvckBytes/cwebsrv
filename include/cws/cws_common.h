@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "util/mman.h"
 #include "util/strfmt.h"
@@ -14,7 +15,7 @@
 #include "cws/cws_response.h"
 
 // Timeout between segments for discarding requests
-#define CWS_REQ_SEG_TIMEOUT 20
+#define CWS_REQ_SEG_TIMEOUT 3
 
 /**
  * @brief Prints the address in format <ip>:<port> while using octet-notation for the <ip>
@@ -48,6 +49,11 @@ void cws_discard_request(cws_client_t *client);
  * @return true Error occurred, message sent
  * @return false Error didn't occur
  */
-bool errif_resp(cws_client_t *client, bool error_cond, cws_response_code_t code, const char *message);
+bool errif_resp(
+  cws_client_t *client,
+  bool error_cond,
+  cws_response_code_t code,
+  const char *message
+);
 
 #endif
