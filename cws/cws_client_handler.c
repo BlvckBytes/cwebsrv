@@ -103,7 +103,11 @@ static void cws_serve_client(void *arg)
   message[++message_offs] = 0;
 
   cws_print_prefix(client) ;
-  printf("Done parsing request, would now process message (%lu bytes)!\n", strlen(message));
+  printf("Done parsing request message (%lu bytes)!\n", strlen(message));
+
+  cws_response_send(client, STATUS_OK, NULL, "Thank you for your request! :)");
+  cws_print_prefix(client) ;
+  printf("Responded!\n");
 
   cws_request_head_print(head);
   mman_print_info();

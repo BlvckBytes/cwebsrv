@@ -10,6 +10,7 @@
 #include "cws/cws_client.h"
 #include "cws/cws_common.h"
 #include "cws/cws_request.h"
+#include "cws/cws_response.h"
 #include "util/mman.h"
 
 // Size of one HTTP message segment

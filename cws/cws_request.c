@@ -135,8 +135,7 @@ cws_request_head_t *cws_request_head_parse(char *request, char **error_msg)
     ps_body_part
   };
 
-  // Execute all stages where the inputs on one stage depend
-  // on the outputs of the previous
+  // Execute all stages
   size_t req_offs = 0;
   size_t num_stages = sizeof(parsing_stages) / sizeof(cws_head_parser_t);
   for (size_t i = 0; i < num_stages; i++)
