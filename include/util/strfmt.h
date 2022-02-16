@@ -6,14 +6,29 @@
 #include "util/mman.h"
 
 /**
- * @brief Format a string and allocate it's buffer dynamically
+ * @brief Format a string and re-allocate it's buffer dynamically as needed
  * 
- * @param out Output pointer buffer
+ * @param buf Output buffer pointer, has to be allocated externally
+ * @param offs Offset in this buffer, leave at NULL for no offset
  * @param fmt Format string
- * @param ap Arguments for the format
+ * @param ... Arguments for the format
+ * 
  * @return true Result has been written to the buffer
  * @return false Couldn't allocate space or the buffer/format were NULL
  */
-bool strfmt(char **out, const char *fmt, va_list ap);
+bool strfmt(char **buf, size_t *offs, const char *fmt, ...);
+
+/**
+ * @brief Format a string and re-allocate it's buffer dynamically as needed
+ * 
+ * @param buf Output buffer pointer, has to be allocated externally
+ * @param offs Offset in this buffer, leave at NULL for no offset
+ * @param fmt Format string
+ * @param ap Arguments for the format
+ * 
+ * @return true Result has been written to the buffer
+ * @return false Couldn't allocate space or the buffer/format were NULL
+ */
+bool vstrfmt(char **buf, size_t *offs, const char *fmt, va_list ap);
 
 #endif

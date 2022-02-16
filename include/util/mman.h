@@ -90,9 +90,9 @@ void *mman_alloc(size_t block_size, size_t num_blocks, mman_cleanup_f_t cf);
  * 
  * @param ptr_ptr Pointer to the pointer to the resource
  * @param new_size New size of the data block
- * @return void* Pointer to the extended data block, NULL if no space is left
+ * @return mman_meta_t* Pointer to the leading meta-block of the new data-block
  */
-void *mman_realloc(void *ptr_ptr, size_t block_size, size_t num_blocks);
+mman_meta_t *mman_realloc(void **ptr_ptr, size_t block_size, size_t num_blocks);
 
 /*
 ============================================================================

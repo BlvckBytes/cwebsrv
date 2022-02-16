@@ -46,7 +46,7 @@ dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, dynarr_cf_t cf)
 static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
 {
   // Resize memory block of the array
-  scptr void *new_arr = mman_realloc(&arr->items, sizeof(void *), new_size);
+  scptr void *new_arr = mman_realloc((void **) &arr->items, sizeof(void *), new_size);
   arr->items = mman_ref(new_arr);
   
   // Initialize new slots

@@ -18,7 +18,7 @@ mman_meta_t *mman_fetch_meta(void *ptr)
   mman_meta_t *meta = ptr - sizeof(mman_meta_t);
   if (ptr != meta->ptr)
   {
-    fprintf(stderr, "Invalid resource passed to \"mman_dealloc\"!\n");
+    fprintf(stderr, "Invalid resource passed to \"mman_fetch_meta\"!\n");
     return NULL;
   }
 
@@ -66,10 +66,10 @@ void *mman_alloc(size_t block_size, size_t num_blocks, mman_cleanup_f_t cf)
   return mman_create(block_size, num_blocks, cf)->ptr;
 }
 
-void *mman_realloc(void *ptr_ptr, size_t block_size, size_t num_blocks)
+mman_meta_t *mman_realloc(void **ptr_ptr, size_t block_size, size_t num_blocks)
 {
   // Receiving a pointer to the pointer to the reference, deref once
-  void *ptr = *((void **) ptr_ptr);
+  void *ptr = *ptr_ptr;
 
   // Fetch the meta info allocated before the data block
   mman_meta_t *meta = ptr - sizeof(mman_meta_t);
@@ -85,11 +85,14 @@ void *mman_realloc(void *ptr_ptr, size_t block_size, size_t num_blocks)
     + (block_size * num_blocks) // Data blocks
   );
 
-  // Update pointer, size and return updated pointer
+  // Update the copied meta-block
   meta->ptr = meta + 1;
   meta->block_size = block_size;
   meta->num_blocks = num_blocks;
-  return meta->ptr;
+
+  // Update the outside pointer
+  *ptr_ptr = meta->ptr;
+  return meta;
 }
 
 /*

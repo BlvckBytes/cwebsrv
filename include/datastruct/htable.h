@@ -7,20 +7,33 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "util/mman.h"
 #include "util/atomanip.h"
 #include "util/strclone.h"
+#include "util/strfmt.h"
 
 #define HTABLE_FNV_OFFSET 14695981039346656037UL
 #define HTABLE_FNV_PRIME 1099511628211UL
-#define HTABLE_MAX_KEYLEN 128UL
+
+#define HTABLE_MAX_KEYLEN 128
+
+#define HTABLE_DUMP_LINEBUF 8
+
+/**
+ * @brief Stringifies a given table-value for representation within strings
+ */
+typedef char *(*htable_value_strf_t)(void *);
 
 /**
  * @brief Cleanup function for entry values, used on removal
  */
 typedef void (*htable_cf_t)(void *);
 
+/**
+ * @brief Represents htable operation results
+ */
 typedef enum
 {
   HTABLE_SUCCESS,
@@ -113,5 +126,14 @@ htable_result_t htable_fetch(htable_t *table, char *key, void **output);
  * @param output String array pointer buffer
  */
 void htable_list_keys(htable_t *table, char ***output);
+
+/**
+ * @brief Dumps the current state of the table in a human readable format
+ * 
+ * @param table Table to dump
+ * @param stringifier Stringifier function to apply for values, leave as NULL for internal casting
+ * @return char* Formatted result string
+ */
+char *htable_dump_hr(htable_t *table, htable_value_strf_t stringifier);
 
 #endif

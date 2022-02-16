@@ -191,3 +191,47 @@ void htable_list_keys(htable_t *table, char ***output)
   // Terminate list
   (*output)[output_index] = 0;
 }
+
+char *htable_dump_hr(htable_t *table, htable_value_strf_t stringifier)
+{
+  // Create a buffer for all the lines
+  size_t buf_offs = 0;
+  scptr char *buf = mman_alloc(sizeof(char), 8, NULL);
+
+  // Iterate all slots
+  for (size_t slot = 0; slot < table->_slot_count; slot++)
+  {
+    htable_entry_t *curr = table->slots[slot];
+
+    // Append slot position
+    if (!strfmt(&buf, &buf_offs, "[%lu] ", slot)) return NULL;
+
+    // Print linked list contents
+    while (curr && curr->key)
+    {
+      // Stringify value, if applicable
+      char *stringified = stringifier ? stringifier(curr->value) : (char *) curr->value;
+
+      if (!strfmt(
+        &buf, &buf_offs,
+        "%s (k=\"%s\", v=\"%s\")\n",
+        "\t=>",
+        curr->key,
+        stringifier ? stringifier(curr->value) : (char *) curr->value
+      )) return NULL;
+
+      // Dealloc stringifier result, if applicable
+      if (stringifier) mman_dealloc(stringified);
+
+      // Go to next link
+      curr = curr->_next;
+    }
+
+    // Print trailing "NULL _next"
+    if (!strfmt(&buf, &buf_offs, "\t=> NULL\n")) return NULL;
+  }
+
+  // Terminate whole string
+  buf[++buf_offs] = 0;
+  return mman_ref(buf);
+}

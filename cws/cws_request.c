@@ -146,62 +146,74 @@ cws_request_t *cws_request_parse(char *request, char **error_msg)
   return mman_ref(req);
 }
 
-// TODO: Refactor this ugly mess
-void cws_request_print(cws_request_t *request)
+/**
+ * @brief Stringify a dynlist which only contains string elements
+ * 
+ * @param elem Dynlist to stringify
+ * @return char* Stringified result
+ */
+static char *strf_dynlist_str(void *elem)
 {
-  // Nothing to print
-  if (!request)
+  dynarr_t *arr = (dynarr_t *) elem;
+
+  // Allocate buffer for formatting strings into
+  scptr char *buf = mman_alloc(sizeof(char), 128, NULL);
+  size_t buf_offs = 0;
+
+  // Array start marker
+  if (!strfmt(&buf, &buf_offs, "[")) return NULL;
+
+  for (size_t i = 0; i < arr->_array_size; i++)
   {
-    printf("Invalid request!\n");
-    return;
+    // Skip empty slots
+    char *item = (char *) arr->items[i];
+    if (!item) continue;
+
+    // Print slot string with quotes and comma-separators
+    if (!strfmt(
+      &buf, &buf_offs,
+      "%s\"%s\"",
+      i == 0 ? "" : ", ",
+      item
+    )) return NULL;
   }
 
-  printf("------------< HTTP Request >------------\n");
+  // Array end marker
+  if (!strfmt(&buf, &buf_offs, "]")) return NULL;
+  return mman_ref(buf);
+}
 
+void cws_request_print(cws_request_t *request)
+{
+  if (!request) return;
+
+  printf("------------< HTTP Request >------------\n");
   printf("Method: %s\n", cws_http_method_stringify(request->method));
   printf("Version: HTTP/%d.%d\n", request->http_ver_major, request->http_ver_minor);
-  
-  if (request->uri)
+
+  cws_uri_t *uri = request->uri;
+  if (uri)
   {
     printf("URI Raw: %s\n", request->uri->raw_uri);
     printf("URI Path: %s\n", request->uri->path);
     printf("URI Parameters:\n");
-
-    htable_t *query = request->uri->query;
-    if (query)
+    if (uri->query)
     {
-      char **keys;
-      htable_list_keys(query, &keys);
-
-      for (char **key = keys; *key; key++)
-      {
-        printf("\"%s\":\n", *key);
-
-        dynarr_t *values;
-        if (htable_fetch(query, *key, (void **) &values) != HTABLE_SUCCESS)
-        {
-          printf("error!\n");
-          continue;
-        }
-
-        for (size_t i = 0; i < values->_array_size; i++)
-          if (values->items[i]) printf("-\"%s\"\n", (char *) values->items[i]);
-      }
+      scptr char *res = htable_dump_hr(uri->query, strf_dynlist_str);
+      printf("%s", res);
     }
-    else
-      printf("URI parameters not parsed!\n");
+    else printf("URI parameters not parsed!\n");
   }
   else printf("URI not parsed!\n");
 
-
   printf("Headers:\n");
   if (request->headers)
-    cws_print_htable_keys(request->headers, false);
-  else
-    printf("Headers not parsed!\n");
+  {
+    scptr char *res = htable_dump_hr(request->headers, NULL);
+    printf("%s", res);
+  }
+  else printf("Headers not parsed!\n");
 
-  printf("Body:\n");
-  printf("%s\n", request->body ? request->body : "<no body>");
-
+  printf("Body: \n%s\n", request->body);
   printf("------------< HTTP Request >------------\n");
 }

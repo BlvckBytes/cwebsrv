@@ -20,22 +20,23 @@ static void cws_serve_client(void *arg)
 
   while ((read_size = recv(client->descriptor, message, sizeof(message), 0)) > 0)
   {
-    cws_print_prefix(client);
-    printf("RAW request:\n");
-    printf("%s\n", message);
-
-    cws_print_prefix(client);
-    printf("Parsed request:\n");
-
+    // Parse and print request
     scptr char *error_msg;
     scptr cws_request_t *req = cws_request_parse(message, &error_msg);
-    cws_request_print(req);
 
     // Print error message, if exists
     if (error_msg)
     {
       cws_print_prefix(client);
       printf("Error: %s\n", error_msg);
+    }
+
+    // Print the parsed request otherwise
+    else
+    {
+      cws_print_prefix(client);
+      printf("\n");
+      cws_request_print(req);
     }
 
     // Reset buffer

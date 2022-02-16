@@ -1,23 +1,45 @@
 #include "util/strfmt.h"
 
-bool strfmt(char **out, const char *fmt, va_list ap)
+bool vstrfmt(char **buf, size_t *offs, const char *fmt, va_list ap)
 {
-  // Initally, try to fit the message into 128 characters
-  scptr char *res = mman_alloc(sizeof(char), 128, NULL);
-  mman_meta_t *res_m = mman_fetch_meta(res);
+  va_list ap2;
+  va_copy(ap2, ap);
 
-  // Check if space was sufficient
-  int req_sz = vsnprintf(res, res_m->num_blocks, fmt, ap);
-  if (req_sz >= res_m->num_blocks)
+  // Calculate available remaining buffer size
+  mman_meta_t *buf_meta = mman_fetch_meta(*buf);
+  size_t offs_v = offs ? *offs : 0;
+  size_t buf_len = buf_meta->num_blocks;
+  size_t buf_avail = buf_len - (offs_v + 1);
+
+  // Calculate how many chars are needed
+  size_t needed = vsnprintf(NULL, 0, fmt, ap) + 1;
+
+  // Buffer too small
+  if (buf_avail < needed)
   {
-    // Try to allocate more space
-    if ((res = mman_realloc(&res, sizeof(char), req_sz)) == NULL)
-      // Not enough space left
-      return false;
+    size_t diff = needed - buf_avail;
 
-    vsnprintf(res, res_m->num_blocks, fmt, ap);
+    // Extend by the difference
+    if (!mman_realloc((void **) buf, sizeof(char), buf_len + diff)) return false;
+    buf_avail += diff;
   }
 
-  *out = mman_ref(res);
+  // Write into buffer and update outside offset, if applicable
+  int written = vsnprintf(&((*buf)[offs_v]), buf_avail, fmt, ap2);
+  if (offs) *offs += written;
+  va_end(ap2);
   return true;
+
+  va_end(ap2);
+}
+
+bool strfmt(char **buf, size_t *offs, const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+
+  bool res = vstrfmt(buf, offs, fmt, ap);
+
+  va_end(ap);
+  return res;
 }
