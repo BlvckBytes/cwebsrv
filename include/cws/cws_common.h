@@ -14,8 +14,8 @@
 #include "cws/cws_response_code.h"
 #include "cws/cws_response.h"
 
-// Timeout between segments for discarding requests
-#define CWS_REQ_SEG_TIMEOUT 3
+// Timeout between segments for discarding request loops
+#define CWS_REQ_SEG_TIMEOUT_US 1000
 
 /**
  * @brief Prints the address in format <ip>:<port> while using octet-notation for the <ip>

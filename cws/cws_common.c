@@ -56,7 +56,7 @@ void cws_discard_request(cws_client_t *client)
     // No data, not in waiting mode, wait
     if (read <= 0)
     {
-      usleep(CWS_REQ_SEG_TIMEOUT * 1000);
+      usleep(CWS_REQ_SEG_TIMEOUT_US);
       waited = true;
     }
   }
