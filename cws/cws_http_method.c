@@ -17,7 +17,6 @@ const char *cws_http_method_stringify(cws_http_method_t method)
 {
   if (method < 0 || method >= cws_http_method_str_len)
     return NULL;
-
   return cws_http_method_str[method];
 }
 

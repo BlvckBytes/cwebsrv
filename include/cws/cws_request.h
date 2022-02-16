@@ -20,7 +20,7 @@
 
 /*
 ============================================================================
-                                  Request                                   
+                               Parsing chain                                
 ============================================================================
 */
 
@@ -67,6 +67,12 @@ typedef bool (*cws_request_parser_t)(
  * @return cws_request_t* Parsed result, NULL when an error occurred
  */
 cws_request_t *cws_request_parse(char *request, char **error_msg);
+
+/*
+============================================================================
+                                 Printing                                   
+============================================================================
+*/
 
 /**
  * @brief Print the contents of a request on stdout

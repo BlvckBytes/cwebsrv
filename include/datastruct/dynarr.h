@@ -5,11 +5,8 @@
 #include <stdbool.h>
 
 #include "util/mman.h"
-
-/**
- * @brief Cleanup function for items, used on removal
- */
-typedef void (*dynarr_cf_t)(void *);
+#include "util/common_types.h"
+#include "util/strfmt.h"
 
 /**
  * @brief Represents the dynamic array, keeping track of it's
@@ -27,7 +24,7 @@ typedef struct
   size_t _array_cap;
 
   // Cleanup function for the array items
-  dynarr_cf_t _cf;
+  cleanup_fn_t _cf;
 } dynarr_t;
 
 typedef enum
@@ -53,7 +50,7 @@ typedef enum
  * @param cf Cleanup function for the items
  * @return dynarr_t* Pointer to the new array
  */
-dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, dynarr_cf_t cf);
+dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, cleanup_fn_t cf);
 
 /**
  * @brief Push a new item into the array
@@ -93,5 +90,23 @@ dynarr_result_t dynarr_pop(dynarr_t *arr, void **out, size_t *slot);
  * @return dynarr_result_t Operation result
  */
 dynarr_result_t dynarr_remove_at(dynarr_t *arr, size_t index, void **out);
+
+/**
+ * @brief Dumps the current state of the array in a human readable format
+ * 
+ * @param table Table to dump
+ * @param stringifier Stringifier function to apply for values, leave as NULL for internal casting
+ * @return char* Formatted result string
+ */
+char *dynarr_dump_hr(dynarr_t *arr, stringifier_t stringifier);
+
+/**
+ * @brief Dumps the current state of the array containing string values
+ * in a human readable format
+ * 
+ * @param table Table to dump
+ * @return char* Formatted result string
+ */
+char *dynarr_dump_hr_strs(dynarr_t *arr);
 
 #endif

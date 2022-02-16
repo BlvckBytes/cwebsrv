@@ -13,6 +13,7 @@
 #include "util/atomanip.h"
 #include "util/strclone.h"
 #include "util/strfmt.h"
+#include "util/common_types.h"
 
 #define HTABLE_FNV_OFFSET 14695981039346656037UL
 #define HTABLE_FNV_PRIME 1099511628211UL
@@ -20,16 +21,6 @@
 #define HTABLE_MAX_KEYLEN 128
 
 #define HTABLE_DUMP_LINEBUF 8
-
-/**
- * @brief Stringifies a given table-value for representation within strings
- */
-typedef char *(*htable_value_strf_t)(void *);
-
-/**
- * @brief Cleanup function for entry values, used on removal
- */
-typedef void (*htable_cf_t)(void *);
 
 /**
  * @brief Represents htable operation results
@@ -74,7 +65,7 @@ typedef struct
   size_t _item_cap;
 
   // Cleanup function for the table items
-  htable_cf_t _cf;
+  cleanup_fn_t _cf;
 } htable_t;
 
 /**
@@ -85,7 +76,7 @@ typedef struct
  * @param cf Cleanup function for the items
  * @return htable_t* Pointer to the new table
  */
-htable_t *htable_make(size_t slot_count, size_t item_cap, htable_cf_t cf);
+htable_t *htable_make(size_t slot_count, size_t item_cap, cleanup_fn_t cf);
 
 /**
  * @brief Insert a new item into the table
@@ -134,6 +125,15 @@ void htable_list_keys(htable_t *table, char ***output);
  * @param stringifier Stringifier function to apply for values, leave as NULL for internal casting
  * @return char* Formatted result string
  */
-char *htable_dump_hr(htable_t *table, htable_value_strf_t stringifier);
+char *htable_dump_hr(htable_t *table, stringifier_t stringifier);
+
+/**
+ * @brief Dumps the current state of the table containing string values
+ * in a human readable format
+ * 
+ * @param table Table to dump
+ * @return char* Formatted result string
+ */
+char *htable_dump_hr_strs(htable_t *table);
 
 #endif

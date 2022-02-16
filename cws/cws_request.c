@@ -146,42 +146,11 @@ cws_request_t *cws_request_parse(char *request, char **error_msg)
   return mman_ref(req);
 }
 
-/**
- * @brief Stringify a dynlist which only contains string elements
- * 
- * @param elem Dynlist to stringify
- * @return char* Stringified result
- */
-static char *strf_dynlist_str(void *elem)
-{
-  dynarr_t *arr = (dynarr_t *) elem;
-
-  // Allocate buffer for formatting strings into
-  scptr char *buf = mman_alloc(sizeof(char), 128, NULL);
-  size_t buf_offs = 0;
-
-  // Array start marker
-  if (!strfmt(&buf, &buf_offs, "[")) return NULL;
-
-  for (size_t i = 0; i < arr->_array_size; i++)
-  {
-    // Skip empty slots
-    char *item = (char *) arr->items[i];
-    if (!item) continue;
-
-    // Print slot string with quotes and comma-separators
-    if (!strfmt(
-      &buf, &buf_offs,
-      "%s\"%s\"",
-      i == 0 ? "" : ", ",
-      item
-    )) return NULL;
-  }
-
-  // Array end marker
-  if (!strfmt(&buf, &buf_offs, "]")) return NULL;
-  return mman_ref(buf);
-}
+/*
+============================================================================
+                                 Printing                                   
+============================================================================
+*/
 
 void cws_request_print(cws_request_t *request)
 {
@@ -199,7 +168,7 @@ void cws_request_print(cws_request_t *request)
     printf("URI Parameters:\n");
     if (uri->query)
     {
-      scptr char *res = htable_dump_hr(uri->query, strf_dynlist_str);
+      scptr char *res = htable_dump_hr(uri->query, (stringifier_t) dynarr_dump_hr_strs);
       printf("%s", res);
     }
     else printf("URI parameters not parsed!\n");

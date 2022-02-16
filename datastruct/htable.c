@@ -3,7 +3,7 @@
 /**
  * @brief Clean up an individual slot
  */
-INLINED static void htable_slot_cleanup(htable_entry_t *slot, htable_cf_t cf)
+INLINED static void htable_slot_cleanup(htable_entry_t *slot, cleanup_fn_t cf)
 {
   // Call the item free function, if applicable
   if (cf && slot->value) cf(slot->value);
@@ -36,7 +36,7 @@ INLINED static void htable_cleanup(mman_meta_t *ref)
   mman_dealloc(table->slots);
 }
 
-htable_t *htable_make(size_t slot_count, size_t item_cap, htable_cf_t cf)
+htable_t *htable_make(size_t slot_count, size_t item_cap, cleanup_fn_t cf)
 {
   htable_t *table = (htable_t *) mman_alloc(sizeof(htable_t), 1, htable_cleanup);
   
@@ -192,7 +192,12 @@ void htable_list_keys(htable_t *table, char ***output)
   (*output)[output_index] = 0;
 }
 
-char *htable_dump_hr(htable_t *table, htable_value_strf_t stringifier)
+char *htable_dump_hr_strs(htable_t *table)
+{
+  return htable_dump_hr(table, NULL);
+}
+
+char *htable_dump_hr(htable_t *table, stringifier_t stringifier)
 {
   // Create a buffer for all the lines
   size_t buf_offs = 0;

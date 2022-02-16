@@ -3,7 +3,7 @@
 /**
  * @brief Clean up individual items
  */
-INLINED static void dynarr_item_cleanup(void *ref, dynarr_cf_t cf)
+INLINED static void dynarr_item_cleanup(void *ref, cleanup_fn_t cf)
 {
 
   cf(ref);
@@ -27,7 +27,7 @@ INLINED static void dynarr_cleanup(mman_meta_t *ref)
   mman_dealloc(dynarr->items);
 }
 
-dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, dynarr_cf_t cf)
+dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, cleanup_fn_t cf)
 {
   scptr dynarr_t *res = mman_alloc(sizeof(dynarr_t), 1, dynarr_cleanup);
 
@@ -138,4 +138,38 @@ dynarr_result_t dynarr_remove_at(dynarr_t *arr, size_t index, void **out)
   if (out) *out = slot;
   slot = NULL;
   return dynarr_SUCCESS;
+}
+
+char *dynarr_dump_hr_strs(dynarr_t *arr)
+{
+  return dynarr_dump_hr(arr, NULL);
+}
+
+char *dynarr_dump_hr(dynarr_t *arr, stringifier_t stringifier)
+{
+  // Allocate buffer for formatting strings into
+  scptr char *buf = mman_alloc(sizeof(char), 128, NULL);
+  size_t buf_offs = 0;
+
+  // Array start marker
+  if (!strfmt(&buf, &buf_offs, "[")) return NULL;
+
+  for (size_t i = 0; i < arr->_array_size; i++)
+  {
+    // Skip empty slots
+    void *item = arr->items[i];
+    if (!item) continue;
+
+    // Print slot string with quotes and comma-separators
+    if (!strfmt(
+      &buf, &buf_offs,
+      "%s\"%s\"",
+      i == 0 ? "" : ", ",
+      stringifier ? stringifier(item) : (char *) item
+    )) return NULL;
+  }
+
+  // Array end marker
+  if (!strfmt(&buf, &buf_offs, "]")) return NULL;
+  return mman_ref(buf);
 }
