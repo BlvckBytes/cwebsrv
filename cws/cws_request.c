@@ -5,9 +5,8 @@
  */
 INLINED static void cws_request_cleanup(mman_meta_t *ref)
 {
-  mman_dealloc(((cws_request_t *) ref->ptr)->headers);
-  mman_dealloc(((cws_request_t *) ref->ptr)->uri);
-  mman_dealloc(((cws_request_t *) ref->ptr)->body);
+  mman_dealloc(((cws_request_head_t *) ref->ptr)->headers);
+  mman_dealloc(((cws_request_head_t *) ref->ptr)->uri);
 }
 
 /*
@@ -16,7 +15,7 @@ INLINED static void cws_request_cleanup(mman_meta_t *ref)
 ============================================================================
 */
 
-static bool ps_http_method(char *req, size_t *offs, cws_request_t *res, char **err)
+static bool ps_http_method(char *req, size_t *offs, cws_request_head_t *res, char **err)
 {
   // Cut method string
   scptr char *method_str = partial_strdup(req, offs, " ", false);
@@ -30,7 +29,7 @@ static bool ps_http_method(char *req, size_t *offs, cws_request_t *res, char **e
   return true;
 }
 
-static bool ps_uri(char *req, size_t *offs, cws_request_t *res, char **err)
+static bool ps_uri(char *req, size_t *offs, cws_request_head_t *res, char **err)
 {
   // Cut URI string
   scptr char *raw_uri = partial_strdup(req, offs, " ", false);
@@ -44,7 +43,7 @@ static bool ps_uri(char *req, size_t *offs, cws_request_t *res, char **err)
   return true;
 }
 
-static bool ps_http_version(char *req, size_t *offs, cws_request_t *res, char **err)
+static bool ps_http_version(char *req, size_t *offs, cws_request_head_t *res, char **err)
 {
   // Cut HTTP version
   scptr char *raw_vers = partial_strdup(req, offs, "\n", false);
@@ -63,10 +62,10 @@ static bool ps_http_version(char *req, size_t *offs, cws_request_t *res, char **
   if (rp_exit(!vers_minor_str, err, "Minor HTTP version missing!")) return false;
 
   // Parse major/minor version
-  int vers_major = 0, vers_minor = 0;
+  long vers_major = 0, vers_minor = 0;
   if (rp_exit((
-    str2int(&vers_major, vers_major_str, 10) != STR2INT_SUCCESS ||
-    str2int(&vers_minor, vers_minor_str, 10) != STR2INT_SUCCESS),
+    longp(&vers_major, vers_major_str, 10) != LONGP_SUCCESS ||
+    longp(&vers_minor, vers_minor_str, 10) != LONGP_SUCCESS),
     err, "HTTP version major/minor non-numerical!"
   )) return false;
 
@@ -75,7 +74,7 @@ static bool ps_http_version(char *req, size_t *offs, cws_request_t *res, char **
   return true;
 }
 
-static bool ps_headers(char *req, size_t *offs, cws_request_t *res, char **err)
+static bool ps_headers(char *req, size_t *offs, cws_request_head_t *res, char **err)
 {
   // Create headers hash table
   scptr htable_t *headers = htable_make(16, CWS_MAX_NUM_HEADERS, mman_dealloc);
@@ -108,11 +107,11 @@ static bool ps_headers(char *req, size_t *offs, cws_request_t *res, char **err)
   return true;
 }
 
-static bool ps_body(char *req, size_t *offs, cws_request_t *res, char **err)
+static bool ps_body_part(char *req, size_t *offs, cws_request_head_t *res, char **err)
 {
-  // Just get the rest of the body
+  // Just get the rest as the body
   scptr char *body = partial_strdup(req, offs, "\0", false);
-  res->body = mman_ref(body);
+  res->body_part = mman_ref(body);
   return true;
 }
 
@@ -122,24 +121,24 @@ static bool ps_body(char *req, size_t *offs, cws_request_t *res, char **err)
 ============================================================================
 */
 
-cws_request_t *cws_request_parse(char *request, char **error_msg)
+cws_request_head_t *cws_request_head_parse(char *request, char **error_msg)
 {
   // Allocate an empty request
-  scptr cws_request_t *req = (cws_request_t *) mman_alloc(sizeof(cws_request_t), 1, cws_request_cleanup);
+  scptr cws_request_head_t *req = (cws_request_head_t *) mman_alloc(sizeof(cws_request_head_t), 1, cws_request_cleanup);
 
   // Register stages in the right order here
-  cws_request_parser_t parsing_stages[] = {
+  cws_head_parser_t parsing_stages[] = {
     ps_http_method,
     ps_uri,
     ps_http_version,
     ps_headers,
-    ps_body
+    ps_body_part
   };
 
   // Execute all stages where the inputs on one stage depend
   // on the outputs of the previous
   size_t req_offs = 0;
-  size_t num_stages = sizeof(parsing_stages) / sizeof(cws_request_parser_t);
+  size_t num_stages = sizeof(parsing_stages) / sizeof(cws_head_parser_t);
   for (size_t i = 0; i < num_stages; i++)
     if (!parsing_stages[i](request, &req_offs, req, error_msg)) return NULL;
 
@@ -152,13 +151,13 @@ cws_request_t *cws_request_parse(char *request, char **error_msg)
 ============================================================================
 */
 
-void cws_request_print(cws_request_t *request)
+void cws_request_head_print(cws_request_head_t *request)
 {
   if (!request) return;
 
-  printf("------------< HTTP Request >------------\n");
+  printf("----------< HTTP Request Head >----------\n");
   printf("Method: %s\n", cws_http_method_stringify(request->method));
-  printf("Version: HTTP/%d.%d\n", request->http_ver_major, request->http_ver_minor);
+  printf("Version: HTTP/%ld.%ld\n", request->http_ver_major, request->http_ver_minor);
 
   cws_uri_t *uri = request->uri;
   if (uri)
@@ -182,7 +181,5 @@ void cws_request_print(cws_request_t *request)
     printf("%s", res);
   }
   else printf("Headers not parsed!\n");
-
-  printf("Body: \n%s\n", request->body);
-  printf("------------< HTTP Request >------------\n");
+  printf("----------< HTTP Request Head >----------\n");
 }

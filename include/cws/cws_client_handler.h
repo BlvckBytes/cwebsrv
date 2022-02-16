@@ -12,6 +12,11 @@
 #include "cws/cws_request.h"
 #include "util/mman.h"
 
+// Size of one HTTP message segment
+// WARNING: This needs to fit a full head in order be able to
+// parse Content-Length in the first packet!
+#define CWS_HANDLER_SEGLEN 1024
+
 /**
  * @brief Start handling an individual client in it's own thread
  */

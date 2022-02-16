@@ -5,7 +5,7 @@
 #include "cws/cws_uri.h"
 #include "cws/cws_common.h"
 #include "datastruct/htable.h"
-#include "util/str2int.h"
+#include "util/longp.h"
 #include "util/mman.h"
 #include "util/partial_strdup.h"
 #include <stdarg.h>
@@ -20,14 +20,14 @@
 
 /*
 ============================================================================
-                               Parsing chain                                
+                             Head parsing chain                             
 ============================================================================
 */
 
 /**
- * @brief Represents a HTTP request by a client
+ * @brief Represents a HTTP request's head
  */
-typedef struct cws_request
+typedef struct cws_request_head
 {
   // Request method performed on the URI
   cws_http_method_t method;
@@ -39,24 +39,24 @@ typedef struct cws_request
   // value: header value string
   htable_t *headers;
 
-  // Raw body as a string
-  char *body;
+  // Part of the body, which has been within the first segment
+  char *body_part;
 
   // Http version
-  uint8_t http_ver_major;
-  uint8_t http_ver_minor;
-} cws_request_t;
+  long http_ver_major;
+  long http_ver_minor;
+} cws_request_head_t;
 
 /**
- * @brief Represents a stage of request parsing
+ * @brief Represents a stage of request head parsing
  * @returns true On successful execution
  * @returns false On errors, error-description is set in err
  */
-typedef bool (*cws_request_parser_t)(
-  char *req,              // Full request string
-  size_t *offs,           // Offset pointer for change in place
-  cws_request_t *result,  // Parse result to which partial results are applied
-  char **err              // Error buffer ptr
+typedef bool (*cws_head_parser_t)(
+  char *req,                    // Full request string
+  size_t *offs,                 // Offset pointer for change in place
+  cws_request_head_t *result,   // Parse result to which partial results are applied
+  char **err                    // Error buffer ptr
 );
 
 /**
@@ -66,7 +66,7 @@ typedef bool (*cws_request_parser_t)(
  * @param error_msg Error message output buffer
  * @return cws_request_t* Parsed result, NULL when an error occurred
  */
-cws_request_t *cws_request_parse(char *request, char **error_msg);
+cws_request_head_t *cws_request_head_parse(char *request, char **error_msg);
 
 /*
 ============================================================================
@@ -77,6 +77,6 @@ cws_request_t *cws_request_parse(char *request, char **error_msg);
 /**
  * @brief Print the contents of a request on stdout
  */
-void cws_request_print(cws_request_t *request);
+void cws_request_head_print(cws_request_head_t *request);
 
 #endif

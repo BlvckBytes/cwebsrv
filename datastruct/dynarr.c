@@ -43,7 +43,7 @@ dynarr_t *dynarr_make(size_t array_size, size_t array_max_size, cleanup_fn_t cf)
   return mman_ref(res);
 }
 
-static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
+INLINED static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
 {
   // Resize memory block of the array
   scptr void *new_arr = mman_realloc((void **) &arr->items, sizeof(void *), new_size);
@@ -57,7 +57,6 @@ static void dynarr_resize_arr(dynarr_t *arr, size_t new_size)
   arr->_array_size = new_size;
 }
 
-// TODO: Size down as well
 static bool dynarr_try_resize(dynarr_t *arr)
 {
   size_t rem_cap = arr->_array_cap - arr->_array_size;
