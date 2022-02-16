@@ -31,3 +31,46 @@ bool rp_exit(bool exit, char **error_msg, const char *error_fmt, ...)
   va_end(ap);
   return res;
 }
+
+void cws_discard_request(cws_client_t *client)
+{
+  char waste_buf[128];
+  int read;
+  bool waited = false;
+
+  // Read non-blocking with timeouts until nothing remains
+  while ((read = recv(client->descriptor, waste_buf, sizeof(waste_buf), MSG_DONTWAIT)))
+  {
+    // No data after read, quit reading now
+    if (waited && read <= 0)
+      break;
+
+    // No data, not in waiting mode, wait
+    if (read <= 0)
+    {
+      usleep(CWS_REQ_SEG_TIMEOUT * 1000);
+      waited = true;
+    }
+  }
+}
+
+bool errif_resp(cws_client_t *client, bool error_cond, cws_response_code_t code, const char *message)
+{
+  // Error did not occur
+  if (!error_cond) return false;
+
+  // Set up response body buffer
+  scptr char *body = mman_alloc(sizeof(char), 128, NULL);
+  size_t body_offs = 0;
+
+  // Build simple and quick JSON response
+  strfmt(&body, &body_offs, "{" CRLF);
+  strfmt(&body, &body_offs, "\"error\": true," CRLF);
+  strfmt(&body, &body_offs, "\"message\": \"%s\"," CRLF, message);
+  strfmt(&body, &body_offs, "}");
+
+  // Send response to the client after discarding their message
+  cws_discard_request(client);
+  cws_response_send(client, code, NULL, body);
+  return true;
+}

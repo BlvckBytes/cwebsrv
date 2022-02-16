@@ -57,59 +57,58 @@ static void cws_serve_client(void *arg)
   {
     if (first_seg)
     {
+      // Parse head
       scptr char *err;
       head = cws_request_head_parse(message_seg, &err);
+      if (errif_resp(client, err, STATUS_BAD_REQUEST, err)) break;
 
-      if (err)
-      {
-        printf("Error: %s\n", err);
-        break;
-      }
-
+      // Calculate remaining length
       seg_data_remaining = cws_remaining_len(client, head, &err);
+      if (errif_resp(client, err, STATUS_BAD_REQUEST, err)) break;
+      
+      // Copy head into message buffer
+      if (errif_resp(
+        client,
+        !strfmt(&message, &message_offs, "%s", head->body_part),
+        STATUS_INTERNAL_SERVER_ERROR, "Could not allocate space for the head!"
+      )) break;
+
+      // First segment completed
       first_seg = false;
-
-      if (err)
-      {
-        printf("Error: %s\n", err);
-        break;
-      }
-
-      // Concat begin of body into buffer
-      if (!strfmt(&message, &message_offs, "%s", head->body_part))
-      {
-        printf("Error: Could not allocate space for body_part of head!\n");
-        break;
-      }
-
       continue;
     }
 
     // Concat segment into message
-    if (!strfmt(&message, &message_offs, "%s", message_seg))
-    {
-      printf("Error: Could not allocate more space for next request-part!\n");
-      break;
-    }
+    if (errif_resp(
+      client,
+      !strfmt(&message, &message_offs, "%s", message_seg),
+      STATUS_INTERNAL_SERVER_ERROR, "Could not allocate space for a segment!"
+    )) break;
 
     // Decrement remaining segment data by what just has been read
-    seg_data_remaining -= read_size;
-
     // Clear segment buffer and advance to next segment
+    seg_data_remaining -= read_size;
     memset(message_seg, 0, CWS_HANDLER_SEGLEN);
   }
 
   // Terminate final message
   message[++message_offs] = 0;
 
-  cws_print_prefix(client) ;
+  cws_print_prefix(client);
   printf("Done parsing request message (%lu bytes)!\n", strlen(message));
+  cws_request_head_print(head);
 
+  // Respond with this simple test response
   cws_response_send(client, STATUS_OK, NULL, "Thank you for your request! :)");
   cws_print_prefix(client) ;
   printf("Responded!\n");
 
-  cws_request_head_print(head);
+  // Close the connection
+  close(client->descriptor);
+  cws_print_prefix(client) ;
+  printf("Connection closed!\n");
+
+  // Print memory status
   mman_print_info();
 }
 
