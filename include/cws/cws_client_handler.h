@@ -16,7 +16,7 @@
 // Size of one HTTP message segment
 // WARNING: This needs to fit a full head in order be able to
 // parse Content-Length in the first packet!
-#define CWS_HANDLER_SEGLEN 1024
+#define CWS_HANDLER_SEGLEN 8192
 
 /**
  * @brief Start handling an individual client in it's own thread

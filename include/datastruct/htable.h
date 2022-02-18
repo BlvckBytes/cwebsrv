@@ -22,6 +22,8 @@
 
 #define HTABLE_DUMP_LINEBUF 8
 
+// TODO: Implement merge function which combines keys and has op-types on duplicates (err, keep, override)
+
 /**
  * @brief Represents htable operation results
  */
