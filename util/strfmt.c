@@ -43,3 +43,19 @@ bool strfmt(char **buf, size_t *offs, const char *fmt, ...)
   va_end(ap);
   return res;
 }
+
+char *strfmt_direct(const char *fmt, ...)
+{
+  scptr char *buf = mman_alloc(sizeof(char), 128, NULL);
+
+  va_list ap;
+  va_start(ap, fmt);
+
+  size_t offs = 0;
+  bool res = vstrfmt(&buf, &offs, fmt, ap);
+
+  va_end(ap);
+
+  if (!res) return NULL;
+  return mman_ref(buf);
+}

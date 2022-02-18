@@ -19,22 +19,29 @@
 #define HTABLE_FNV_PRIME 1099511628211UL
 
 #define HTABLE_MAX_KEYLEN 128
-
 #define HTABLE_DUMP_LINEBUF 8
 
-// TODO: Implement merge function which combines keys and has op-types on duplicates (err, keep, override)
+/**
+ * @brief Used when a table is appended into another table
+ */
+typedef enum htable_append_mode
+{
+  HTABLE_AM_SKIP,                 // Skip the source's duplicate item
+  HTABLE_AM_OVERRIDE,             // Override the destination's duplicate item
+  HTABLE_AM_DUPERR                // Create a duplicate key error on duplicates
+} htable_append_mode_t;
 
 /**
  * @brief Represents htable operation results
  */
-typedef enum
+typedef enum htable_result
 {
-  HTABLE_SUCCESS,
-  HTABLE_KEY_NOT_FOUND,
-  HTABLE_KEY_ALREADY_EXISTS,
-  HTABLE_KEY_TOO_LONG,
-  HTABLE_FULL,
-  HTABLE_NULL_VALUE,
+  HTABLE_SUCCESS,                 // Operation has been successful
+  HTABLE_KEY_NOT_FOUND,           // The requested key couldn't be located
+  HTABLE_KEY_ALREADY_EXISTS,      // The requested key already exists
+  HTABLE_KEY_TOO_LONG,            // The requested key has too many characters
+  HTABLE_FULL,                    // The table has reached it's defined limit
+  HTABLE_NULL_VALUE,              // Tried to insert a null value
 } htable_result_t;
 
 /**
@@ -92,6 +99,17 @@ htable_t *htable_make(size_t slot_count, size_t item_cap, cleanup_fn_t cf);
 htable_result_t htable_insert(htable_t *table, char *key, void *elem);
 
 /**
+ * @brief Check if the table already contains this key
+ * 
+ * @param table Table reference
+ * @param key Key to check
+ * 
+ * @return true Key exists
+ * @return false Key does not exist
+ */
+bool htable_contains(htable_t *table, char *key);
+
+/**
  * @brief Remove an element by it's key
  * 
  * @param table Table reference
@@ -111,6 +129,16 @@ htable_result_t htable_remove(htable_t *table, char *key);
  * @return htable_result_t Result of this operation
  */
 htable_result_t htable_fetch(htable_t *table, char *key, void **output);
+
+/**
+ * @brief Append a table's entries into another table
+ * 
+ * @param dest Destination to append to
+ * @param src Source to append from
+ * @param mode Mode of appending
+ * @return htable_result_t Operation result
+ */
+htable_result_t htable_append_table(htable_t *dest, htable_t *src, htable_append_mode_t mode);
 
 /**
  * @brief Get a list of all existing keys inside the table

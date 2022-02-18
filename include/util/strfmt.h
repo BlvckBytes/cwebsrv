@@ -31,4 +31,14 @@ bool strfmt(char **buf, size_t *offs, const char *fmt, ...);
  */
 bool vstrfmt(char **buf, size_t *offs, const char *fmt, va_list ap);
 
+/**
+ * @brief Format a string and directly get the result, without having to
+ * provide a buffer as well as an offset tracker
+ * 
+ * @param fmt Format string
+ * @param ... Arguments for the format
+ * @return char* Formatted string or NULL on errors
+ */
+char *strfmt_direct(const char *fmt, ...);
+
 #endif

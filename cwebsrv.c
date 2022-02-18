@@ -34,7 +34,7 @@ int main(void)
   int err = pthread_join(sock->thread, NULL);
   if (err)
   {
-    fprintf(stderr, "Could not join listener thread (%d)!\n", errno);
+    fprintf(stderr, "Could not join listener thread (%d)!\n", err);
     return 1;
   }
 

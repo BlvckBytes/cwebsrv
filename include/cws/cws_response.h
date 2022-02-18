@@ -8,10 +8,15 @@
 // Initial size of the response-buffer, it grows as needed
 #define CWS_RESPONSE_BUFFER 1024
 
+// Maximum number of headers the response can contain
+// This includes automatic (required) headers
+#define CWS_RESPONSE_MAX_HEADERS 64
+
 typedef bool (*cws_response_builder_t)(
   cws_client_t *client,      // Response recipient
   cws_response_code_t code,  // Response code
-  htable_t *headers,         // Response headers
+  htable_t *headers,         // Caller defined response headers
+  htable_t *header_buf,      // Response header builder buffer
   char *body,                // Response body
   size_t *offs,              // Offset pointer for change in place
   char **response            // Response message buffer

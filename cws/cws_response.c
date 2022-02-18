@@ -1,9 +1,16 @@
 #include "cws/cws_response.h"
 
+/*
+============================================================================
+                               Building stages                              
+============================================================================
+*/
+
 bool rb_status_line (
   cws_client_t *client,
   cws_response_code_t code,
   htable_t *headers,
+  htable_t *header_buf,
   char *body,
   size_t *offs,
   char **response
@@ -18,27 +25,53 @@ bool rb_status_line (
   return true;
 }
 
-bool rb_headers_required(
+bool rb_headers_append(
   cws_client_t *client,
   cws_response_code_t code,
   htable_t *headers,
+  htable_t *header_buf,
   char *body,
   size_t *offs,
   char **response
 )
 {
-  // Mark connection as closed
-  strfmt(response, offs, "Connection: Closed" CRLF);
+  // List all available header keys
+  char **keys;
+  htable_list_keys(header_buf, &keys);
 
-  // TODO: Mime-types should not be hardcoded like this
-  // Set content type
-  strfmt(response, offs, "Content-Type: text/html" CRLF);
+  // Loop all keys
+  for (char **key = keys; *key; key++)
+  {
+    // Get the corresponding value
+    char *value;
+    if (htable_fetch(header_buf, *key, (void **) &value) != HTABLE_SUCCESS) return false;
 
-  // Set server name
-  strfmt(response, offs, "Server: cWebSrv/0.0.1" CRLF);
+    // Append to the response
+    strfmt(response, offs, "%s: %s" CRLF, *key, value);
+  }
 
-  // Set content length based on body
-  strfmt(response, offs, "Content-Length: %lu" CRLF, body ? strlen(body) : 0);
+  return true;
+}
+
+bool rb_headers_required(
+  cws_client_t *client,
+  cws_response_code_t code,
+  htable_t *headers,
+  htable_t *header_buf,
+  char *body,
+  size_t *offs,
+  char **response
+)
+{
+  // Determine the length of the body
+  size_t body_len = body ? strlen(body) : 0;
+
+  // Insert all required headers
+  if (htable_insert(header_buf, "Connection", strfmt_direct("Closed")) != HTABLE_SUCCESS) return false;
+  if (htable_insert(header_buf, "Content-Type", strfmt_direct("text/html")) != HTABLE_SUCCESS) return false;
+  if (htable_insert(header_buf, "Server", strfmt_direct("cWebSrv/0.0.1")) != HTABLE_SUCCESS) return false;
+  if (htable_insert(header_buf, "Content-Length", strfmt_direct("%lu", body_len)) != HTABLE_SUCCESS) return false;
+
   return true;
 }
 
@@ -46,6 +79,7 @@ bool rb_headers_additional(
   cws_client_t *client,
   cws_response_code_t code,
   htable_t *headers,
+  htable_t *header_buf,
   char *body,
   size_t *offs,
   char **response
@@ -54,9 +88,8 @@ bool rb_headers_additional(
   // No additional headers desired
   if (!headers) return true;
 
-  // scptr char **header_keys;
-  // htable_list_keys(headers, header_keys);
-  // TODO: Actually write the headers to the response (not feeling it rn)
+  // Append all additional headers to the buffer, skip duplicates (predefineds are not changable)
+  if (htable_append_table(header_buf, headers, HTABLE_AM_SKIP) != HTABLE_SUCCESS) return false;
 
   return true;
 }
@@ -65,6 +98,7 @@ bool rb_empty_line(
   cws_client_t *client,
   cws_response_code_t code,
   htable_t *headers,
+  htable_t *header_buf,
   char *body,
   size_t *offs,
   char **response
@@ -79,6 +113,7 @@ bool rb_body(
   cws_client_t *client,
   cws_response_code_t code,
   htable_t *headers,
+  htable_t *header_buf,
   char *body,
   size_t *offs,
   char **response
@@ -88,6 +123,12 @@ bool rb_body(
   if (body) strfmt(response, offs, "%s", body);
   return true;
 }
+
+/*
+============================================================================
+                                Building chain                              
+============================================================================
+*/
 
 bool cws_response_send(
   cws_client_t *client,
@@ -105,14 +146,26 @@ bool cws_response_send(
     rb_status_line,
     rb_headers_required,
     rb_headers_additional,
+    rb_headers_append,
     rb_empty_line,
     rb_body
   };
 
   // Execute all stages
+  scptr htable_t *header_buf = htable_make(8, CWS_RESPONSE_MAX_HEADERS, mman_dealloc);
   size_t num_stages = sizeof(building_stages) / sizeof(cws_response_builder_t);
   for (size_t i = 0; i < num_stages; i++)
-    if (!building_stages[i](client, code, headers, body, &message_offs, &message)) return false;
+  {
+    if (!building_stages[i](
+      client,
+      code,
+      headers,
+      header_buf,
+      body,
+      &message_offs,
+      &message
+    )) return false;
+  }
 
   // Send the finished message to the client
   send(client->descriptor, message, strlen(message), 0);

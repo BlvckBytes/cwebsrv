@@ -99,7 +99,15 @@ static void cws_serve_client(void *arg)
   cws_request_head_print(head);
 
   // Respond with this simple test response
-  cws_response_send(client, STATUS_OK, NULL, "Thank you for your request! :)");
+  scptr htable_t *headers = htable_make(3, 16, mman_dealloc);
+
+  // This header should be added
+  htable_insert(headers, "X-Custom", strfmt_direct("Hello, world! :)"));
+
+  // This header should be skipped, as it's a required auto-gen header
+  htable_insert(headers, "Content-Type", strfmt_direct("128"));
+
+  cws_response_send(client, STATUS_OK, headers, "Thank you for your request! :)");
   cws_print_prefix(client) ;
   printf("Responded!\n");
 

@@ -121,6 +121,27 @@ INLINED static htable_entry_t *find_entry(htable_t *table, char *key)
   return NULL;
 }
 
+bool htable_contains(htable_t *table, char *key)
+{
+  size_t slot_id = htable_hash(key, table->_slot_count);
+  htable_entry_t *slot = table->slots[slot_id];
+
+  // Traverse linked list
+  htable_entry_t *prev_slot = NULL;
+  while (slot)
+  {
+    // Search slot that contains this key
+    if (strncmp(key, slot->key, HTABLE_MAX_KEYLEN) == 0)
+      return true;
+
+    prev_slot = slot;
+    slot = slot->_next;
+  }
+
+  // Not found
+  return false;
+}
+
 htable_result_t htable_remove(htable_t *table, char *key)
 {
   size_t slot_id = htable_hash(key, table->_slot_count);
@@ -168,6 +189,54 @@ htable_result_t htable_fetch(htable_t *table, char *key, void **output)
 
   *output = NULL;
   return HTABLE_KEY_NOT_FOUND;
+}
+
+htable_result_t htable_append_table(htable_t *dest, htable_t *src, htable_append_mode_t mode)
+{
+  // Get all keys from the source
+  char **keys;
+  htable_list_keys(src, &keys);
+
+  // Check if there are any collisions beforehand
+  if (mode == HTABLE_AM_DUPERR)
+  {
+    // Iterate all available keys
+    for (char **key = keys; *key; key++)
+    {
+      if (htable_contains(dest, *key))
+        return HTABLE_KEY_ALREADY_EXISTS;
+    }
+  }
+
+  // Iterate all available keys
+  for (char **key = keys; *key; key++)
+  {
+    // Fetch this key's value
+    char *value;
+    if (htable_fetch(src, *key, (void *) &value) != HTABLE_SUCCESS)
+      return HTABLE_KEY_NOT_FOUND;
+
+    // Decide what mode to execute on this key
+    htable_result_t insertion_result;
+
+    if (mode == HTABLE_AM_OVERRIDE)
+    {
+      // Remove key if exists (don't even check errors, faster)
+      htable_remove(dest, *key);
+    }
+
+    if (mode == HTABLE_AM_SKIP)
+    {
+      // Skip duplicate
+      if (htable_contains(dest, *key)) continue;
+    }
+
+    // Insert new value
+    if ((insertion_result = htable_insert(dest, *key, value)) != HTABLE_SUCCESS)
+      return insertion_result;
+  }
+
+  return HTABLE_SUCCESS;
 }
 
 void htable_list_keys(htable_t *table, char ***output)
